@@ -69,8 +69,8 @@ public class UpdateRolloverLifecycleDateStep extends ClusterStateActionStep {
         IndexMetaData.Builder newIndexMetadata = IndexMetaData.builder(indexMetaData);
         if (indexingComplete == false) {
             newIndexMetadata
-                .settings(Settings.builder().put(indexMetaData.getSettings()).put(LifecycleSettings.LIFECYCLE_INDEXING_COMPLETE, true))
-                .settingsVersion(indexMetaData.getSettingsVersion() + 1);
+                .settings(Settings.builder().put(indexMetaData.getSettings()).put(LifecycleSettings.LIFECYCLE_INDEXING_COMPLETE, true));
+//                .settingsVersion(indexMetaData.getSettingsVersion() + 1);
         }
         newIndexMetadata.putCustom(ILM_CUSTOM_METADATA_KEY, newLifecycleState.build().asMap());
         return ClusterState.builder(currentState)
