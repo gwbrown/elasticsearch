@@ -1,3 +1,9 @@
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
+
 package org.elasticsearch.xpack.core.snapshotlifecycle.history;
 
 import org.elasticsearch.common.ParseField;
@@ -11,6 +17,15 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import java.io.IOException;
 import java.util.Objects;
 
+/**
+ * Represents an entry in the Snapshot Lifecycle Management history index. Subclass this to add fields which are specific to a type of
+ * operation (e.g. creation, deletion, any others).
+ *
+ * In addition to the abstract methods that subclasses must implement, subclasses should also implement:
+ * 1) a constructor that takes a {@link StreamInput} for deserialization. Remember to call {@code super(in)} before reading any new fields.
+ * 2) an xContent parser using {@link org.elasticsearch.common.xcontent.ConstructingObjectParser}. This will need to parse the fields that
+ *      are part of {@link SnapshotHistoryItem} as well as new fields.
+ */
 public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject {
 
     protected final String policyId;
@@ -54,7 +69,7 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
     }
 
     @Override
-    public void writeTo(StreamOutput out) throws IOException {
+    public final void writeTo(StreamOutput out) throws IOException {
         out.writeString(policyId);
         out.writeString(repository);
         out.writeString(operation);
@@ -63,7 +78,7 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
     }
 
     @Override
-    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+    public final XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject();
         {
             builder.field(POLICY_ID.getPreferredName(), policyId);
@@ -82,10 +97,26 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
         return Strings.toString(this);
     }
 
-    // NOCOMMIT javadoc
+    /**
+     * Write any fields that are introduced in the subclass here. This is called as part of
+     * {@link SnapshotHistoryItem#writeTo(StreamOutput)}, you do not need to (and should not) override that method. All fields that are
+     * part of the {@link SnapshotHistoryItem} class will already be written to the stream, so only write new fields introduced in the
+     * subclass.
+     * @param out The output stream
+     * @throws IOException if an error occurs while writing to the output stream
+     */
     protected abstract void innerWriteTo(StreamOutput out) throws IOException;
 
-    // NOCOMMIT javadoc
+    /**
+     * Write any fields that are introduced in the subclass here. This is called as part of
+     * {@link SnapshotHistoryItem#toXContent(XContentBuilder, Params)}, you do not need to (and should not) override that method. All fields
+     * that are part of the {@link SnapshotHistoryItem} class will already be written to the stream, so only write new fields introduced in
+     * the subclass.
+     * @param builder The xContent builder
+     * @param params Parameters
+     * @return The XContent builder
+     * @throws IOException if an error occurs while writing to the builder
+     */
     protected abstract XContentBuilder innerToXContent(XContentBuilder builder, Params params) throws IOException;
 
     @Override
