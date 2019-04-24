@@ -9,6 +9,7 @@ package org.elasticsearch.xpack.snapshotlifecycle.history;
 import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.test.AbstractSerializingTestCase;
+import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.xpack.core.snapshotlifecycle.SnapshotInvocationRecord;
 import org.elasticsearch.xpack.core.snapshotlifecycle.SnapshotInvocationRecordTests;
 
@@ -32,6 +33,7 @@ public class SnapshotCreationHistoryItemTests extends AbstractSerializingTestCas
 
     @Override
     protected SnapshotCreationHistoryItem createTestInstance() {
+        long timestamp = randomNonNegativeLong();
         String policyId = randomAlphaOfLengthBetween(5, 10);
         String repository = randomAlphaOfLengthBetween(5, 10);
         String operation = randomAlphaOfLengthBetween(5, 10);
@@ -42,7 +44,7 @@ public class SnapshotCreationHistoryItemTests extends AbstractSerializingTestCas
         for (int i = 0; i < fields; i++) {
             snapshotConfiguration.put(randomAlphaOfLength(4), randomAlphaOfLength(4));
         }
-        return new SnapshotCreationHistoryItem(policyId, repository, operation, success, result, snapshotConfiguration);
+        return new SnapshotCreationHistoryItem(timestamp, policyId, repository, operation, success, result, snapshotConfiguration);
     }
 
     @Override
@@ -51,23 +53,26 @@ public class SnapshotCreationHistoryItemTests extends AbstractSerializingTestCas
         switch (branch) {
             case 0:
                 return new SnapshotCreationHistoryItem(
+                    instance.getTimestamp(),
                     randomValueOtherThan(instance.getPolicyId(), () -> randomAlphaOfLengthBetween(5, 10)),
                     instance.getRepository(), instance.getOperation(), instance.isSuccess(), instance.getResult(),
                     instance.getSnapshotConfiguration());
             case 1:
-                return new SnapshotCreationHistoryItem(instance.getPolicyId(),
+                return new SnapshotCreationHistoryItem(instance.getTimestamp(), instance.getPolicyId(),
                     randomValueOtherThan(instance.getRepository(), () -> randomAlphaOfLengthBetween(5, 10)),
                     instance.getOperation(), instance.isSuccess(), instance.getResult(), instance.getSnapshotConfiguration());
             case 2:
-                return new SnapshotCreationHistoryItem(instance.getPolicyId(), instance.getRepository(),
+                return new SnapshotCreationHistoryItem(instance.getTimestamp(), instance.getPolicyId(), instance.getRepository(),
                     randomValueOtherThan(instance.getOperation(), () -> randomAlphaOfLengthBetween(5, 10)),
                     instance.isSuccess(), instance.getResult(), instance.getSnapshotConfiguration());
             case 3:
-                return new SnapshotCreationHistoryItem(instance.getPolicyId(), instance.getRepository(), instance.getOperation(),
+                return new SnapshotCreationHistoryItem(instance.getTimestamp(), instance.getPolicyId(), instance.getRepository(),
+                    instance.getOperation(),
                     instance.isSuccess() == false,
                     instance.getResult(), instance.getSnapshotConfiguration());
             case 4:
-                return new SnapshotCreationHistoryItem(instance.getPolicyId(), instance.getRepository(), instance.getOperation(),
+                return new SnapshotCreationHistoryItem(instance.getTimestamp(), instance.getPolicyId(), instance.getRepository(),
+                    instance.getOperation(),
                     instance.isSuccess(),
                     randomValueOtherThan(instance.getResult(), SnapshotInvocationRecordTests::randomSnapshotInvocationRecord),
                     instance.getSnapshotConfiguration());
@@ -77,8 +82,14 @@ public class SnapshotCreationHistoryItemTests extends AbstractSerializingTestCas
                 for (int i = 0; i < fields; i++) {
                     newConfig.put(randomAlphaOfLength(3), randomAlphaOfLength(3));
                 }
-                return new SnapshotCreationHistoryItem(instance.getPolicyId(), instance.getRepository(), instance.getOperation(),
-                    instance.isSuccess(), instance.getResult(), newConfig);
+                return new SnapshotCreationHistoryItem(instance.getTimestamp(), instance.getPolicyId(), instance.getRepository(),
+                    instance.getOperation(), instance.isSuccess(), instance.getResult(), newConfig);
+            case 6:
+                return new SnapshotCreationHistoryItem(
+                    randomValueOtherThan(instance.getTimestamp(), ESTestCase::randomNonNegativeLong),
+                    instance.getPolicyId(),
+                    instance.getRepository(), instance.getOperation(), instance.isSuccess(), instance.getResult(),
+                    instance.getSnapshotConfiguration());
             default:
                 throw new IllegalArgumentException("illegal randomization: " + branch);
         }

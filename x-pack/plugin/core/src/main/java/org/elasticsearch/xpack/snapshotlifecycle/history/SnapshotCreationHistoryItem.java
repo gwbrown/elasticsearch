@@ -24,22 +24,24 @@ public class SnapshotCreationHistoryItem extends SnapshotHistoryItem {
     private final SnapshotInvocationRecord result;
 
     static final ParseField SNAPSHOT_CONFIG = new ParseField("configuration");
-    static final ParseField RESULT = new ParseField("result");
+    static final ParseField RESULT = new ParseField("creation_result");
 
     @SuppressWarnings("unchecked")
     private static final ConstructingObjectParser<SnapshotCreationHistoryItem, String> PARSER =
         new ConstructingObjectParser<>("snapshot_lifecycle_history_item", true,
             (a, id) -> {
-                final String policyId = (String) a[0];
-                final String repository = (String) a[1];
-                final String operation = (String) a[2];
-                final boolean success = (boolean) a[3];
-                final Map<String, Object> snapshotConfiguration = (Map<String, Object>) a[4];
-                final SnapshotInvocationRecord result = (SnapshotInvocationRecord) a[5];
-                return new SnapshotCreationHistoryItem(policyId, repository, operation, success, result, snapshotConfiguration);
+                final long timestamp = (long) a[0];
+                final String policyId = (String) a[1];
+                final String repository = (String) a[2];
+                final String operation = (String) a[3];
+                final boolean success = (boolean) a[4];
+                final Map<String, Object> snapshotConfiguration = (Map<String, Object>) a[5];
+                final SnapshotInvocationRecord result = (SnapshotInvocationRecord) a[6];
+                return new SnapshotCreationHistoryItem(timestamp, policyId, repository, operation, success, result, snapshotConfiguration);
             });
 
     static {
+        PARSER.declareLong(ConstructingObjectParser.constructorArg(), TIMESTAMP);
         PARSER.declareString(ConstructingObjectParser.constructorArg(), POLICY_ID);
         PARSER.declareString(ConstructingObjectParser.constructorArg(), REPOSITORY);
         PARSER.declareString(ConstructingObjectParser.constructorArg(), OPERATION);
@@ -48,9 +50,9 @@ public class SnapshotCreationHistoryItem extends SnapshotHistoryItem {
         PARSER.declareObject(ConstructingObjectParser.constructorArg(), SnapshotInvocationRecord::parse, RESULT);
     }
 
-    public SnapshotCreationHistoryItem(String policyId, String repository, String operation, boolean success,
+    public SnapshotCreationHistoryItem(long timestamp, String policyId, String repository, String operation, boolean success,
                                        SnapshotInvocationRecord result, Map<String, Object> snapshotConfiguration) {
-        super(policyId, repository, operation, success);
+        super(timestamp, policyId, repository, operation, success);
         this.snapshotConfiguration = Objects.requireNonNull(snapshotConfiguration);
         this.result = Objects.requireNonNull(result);
     }

@@ -60,7 +60,11 @@ import org.elasticsearch.xpack.core.indexlifecycle.action.RemoveIndexLifecyclePo
 import org.elasticsearch.xpack.core.indexlifecycle.action.RetryAction;
 import org.elasticsearch.xpack.core.indexlifecycle.action.StartILMAction;
 import org.elasticsearch.xpack.core.indexlifecycle.action.StopILMAction;
+import org.elasticsearch.xpack.core.snapshotlifecycle.SnapshotLifecycleMetadata;
+import org.elasticsearch.xpack.core.snapshotlifecycle.action.DeleteSnapshotLifecycleAction;
 import org.elasticsearch.xpack.core.snapshotlifecycle.action.ExecuteSnapshotLifecycleAction;
+import org.elasticsearch.xpack.core.snapshotlifecycle.action.GetSnapshotLifecycleAction;
+import org.elasticsearch.xpack.core.snapshotlifecycle.action.PutSnapshotLifecycleAction;
 import org.elasticsearch.xpack.indexlifecycle.action.RestDeleteLifecycleAction;
 import org.elasticsearch.xpack.indexlifecycle.action.RestExplainLifecycleAction;
 import org.elasticsearch.xpack.indexlifecycle.action.RestGetLifecycleAction;
@@ -81,12 +85,8 @@ import org.elasticsearch.xpack.indexlifecycle.action.TransportRemoveIndexLifecyc
 import org.elasticsearch.xpack.indexlifecycle.action.TransportRetryAction;
 import org.elasticsearch.xpack.indexlifecycle.action.TransportStartILMAction;
 import org.elasticsearch.xpack.indexlifecycle.action.TransportStopILMAction;
-import org.elasticsearch.xpack.core.snapshotlifecycle.SnapshotLifecycleMetadata;
 import org.elasticsearch.xpack.snapshotlifecycle.SnapshotLifecycleService;
 import org.elasticsearch.xpack.snapshotlifecycle.SnapshotLifecycleTask;
-import org.elasticsearch.xpack.core.snapshotlifecycle.action.DeleteSnapshotLifecycleAction;
-import org.elasticsearch.xpack.core.snapshotlifecycle.action.GetSnapshotLifecycleAction;
-import org.elasticsearch.xpack.core.snapshotlifecycle.action.PutSnapshotLifecycleAction;
 import org.elasticsearch.xpack.snapshotlifecycle.action.RestDeleteSnapshotLifecycleAction;
 import org.elasticsearch.xpack.snapshotlifecycle.action.RestExecuteSnapshotLifecycleAction;
 import org.elasticsearch.xpack.snapshotlifecycle.action.RestGetSnapshotLifecycleAction;
@@ -95,6 +95,7 @@ import org.elasticsearch.xpack.snapshotlifecycle.action.TransportDeleteSnapshotL
 import org.elasticsearch.xpack.snapshotlifecycle.action.TransportExecuteSnapshotLifecycleAction;
 import org.elasticsearch.xpack.snapshotlifecycle.action.TransportGetSnapshotLifecycleAction;
 import org.elasticsearch.xpack.snapshotlifecycle.action.TransportPutSnapshotLifecycleAction;
+import org.elasticsearch.xpack.snapshotlifecycle.history.SnapshotLifecycleTemplateRegistry;
 
 import java.io.IOException;
 import java.time.Clock;
@@ -158,6 +159,7 @@ public class IndexLifecycle extends Plugin implements ActionPlugin {
                 getClock(), System::currentTimeMillis, xContentRegistry));
         snapshotLifecycleService.set(new SnapshotLifecycleService(settings,
             () -> new SnapshotLifecycleTask(client, clusterService), clusterService, getClock()));
+        new SnapshotLifecycleTemplateRegistry(settings, clusterService, threadPool, client, xContentRegistry);
         return Arrays.asList(indexLifecycleInitialisationService.get(), snapshotLifecycleService.get());
     }
 
