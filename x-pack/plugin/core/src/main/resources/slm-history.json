@@ -35,24 +35,22 @@
         },
         "configuration": {
           "type": "object",
-          "dynamic": true,
-          "enabled": false
-        },
-        "creation_result": {
-          "type": "object",
+          "dynamic": false,
           "properties": {
-            "snapshot_name": {
+            "indices": {
               "type": "keyword"
             },
-            "time": {
-              "type": "date",
-              "format": "epoch_millis"
+            "partial": {
+              "type": "boolean"
             },
-            "details": {
-              "type": "text",
-              "index": false
+            "include_global_state": {
+              "type": "boolean"
             }
           }
+        },
+        "error_details": {
+          "type": "text",
+          "index": false
         }
       }
     }

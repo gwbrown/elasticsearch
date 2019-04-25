@@ -31,19 +31,22 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
     protected final long timestamp;
     protected final String policyId;
     protected final String repository;
+    protected final String snapshotName;
     protected final String operation;
     protected final boolean success;
 
     static final ParseField TIMESTAMP = new ParseField("@timestamp");
     static final ParseField POLICY_ID = new ParseField("policy");
     static final ParseField REPOSITORY = new ParseField("repository");
+    static final ParseField SNAPSHOT_NAME = new ParseField("snapshot_name");
     static final ParseField OPERATION = new ParseField("operation");
     static final ParseField SUCCESS = new ParseField("success");
 
-    public SnapshotHistoryItem(long timestamp, String policyId, String repository, String operation, boolean success) {
+    public SnapshotHistoryItem(long timestamp, String policyId, String repository, String snapshotName, String operation, boolean success) {
         this.timestamp = timestamp;
         this.policyId = Objects.requireNonNull(policyId);
         this.repository = Objects.requireNonNull(repository);
+        this.snapshotName = Objects.requireNonNull(snapshotName);
         this.operation = Objects.requireNonNull(operation);
         this.success = success;
     }
@@ -52,6 +55,7 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
         this.timestamp = in.readVLong();
         this.policyId = in.readString();
         this.repository = in.readString();
+        this.snapshotName = in.readString();
         this.operation = in.readString();
         this.success = in.readBoolean();
     }
@@ -68,6 +72,10 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
         return repository;
     }
 
+    public String getSnapshotName() {
+        return snapshotName;
+    }
+
     public String getOperation() {
         return operation;
     }
@@ -81,6 +89,7 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
         out.writeVLong(timestamp);
         out.writeString(policyId);
         out.writeString(repository);
+        out.writeString(snapshotName);
         out.writeString(operation);
         out.writeBoolean(success);
         innerWriteTo(out);
@@ -93,6 +102,7 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
             builder.timeField(TIMESTAMP.getPreferredName(), "timestamp_string", timestamp);
             builder.field(POLICY_ID.getPreferredName(), policyId);
             builder.field(REPOSITORY.getPreferredName(), repository);
+            builder.field(SNAPSHOT_NAME.getPreferredName(), snapshotName);
             builder.field(OPERATION.getPreferredName(), operation);
             builder.field(SUCCESS.getPreferredName(), success);
             innerToXContent(builder, params);
@@ -138,11 +148,12 @@ public abstract class SnapshotHistoryItem implements Writeable, ToXContentObject
             timestamp == that.getTimestamp() &&
             Objects.equals(getPolicyId(), that.getPolicyId()) &&
             Objects.equals(getRepository(), that.getRepository()) &&
+            Objects.equals(getSnapshotName(), that.getSnapshotName()) &&
             Objects.equals(getOperation(), that.getOperation());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getTimestamp(), getPolicyId(), getRepository(), getOperation(), isSuccess());
+        return Objects.hash(getTimestamp(), getPolicyId(), getRepository(), getSnapshotName(), getOperation(), isSuccess());
     }
 }

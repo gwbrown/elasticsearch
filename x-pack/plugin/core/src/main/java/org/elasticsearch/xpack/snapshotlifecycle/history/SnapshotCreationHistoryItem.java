@@ -6,13 +6,13 @@
 
 package org.elasticsearch.xpack.snapshotlifecycle.history;
 
+import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ConstructingObjectParser;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser;
-import org.elasticsearch.xpack.core.snapshotlifecycle.SnapshotInvocationRecord;
 
 import java.io.IOException;
 import java.util.Map;
@@ -21,10 +21,11 @@ import java.util.Objects;
 public class SnapshotCreationHistoryItem extends SnapshotHistoryItem {
 
     private final Map<String, Object> snapshotConfiguration;
-    private final SnapshotInvocationRecord result;
+    @Nullable
+    private final String errorDetails;
 
     static final ParseField SNAPSHOT_CONFIG = new ParseField("configuration");
-    static final ParseField RESULT = new ParseField("creation_result");
+    static final ParseField ERROR_DETAILS = new ParseField("error_details");
 
     @SuppressWarnings("unchecked")
     private static final ConstructingObjectParser<SnapshotCreationHistoryItem, String> PARSER =
@@ -33,54 +34,57 @@ public class SnapshotCreationHistoryItem extends SnapshotHistoryItem {
                 final long timestamp = (long) a[0];
                 final String policyId = (String) a[1];
                 final String repository = (String) a[2];
-                final String operation = (String) a[3];
-                final boolean success = (boolean) a[4];
-                final Map<String, Object> snapshotConfiguration = (Map<String, Object>) a[5];
-                final SnapshotInvocationRecord result = (SnapshotInvocationRecord) a[6];
-                return new SnapshotCreationHistoryItem(timestamp, policyId, repository, operation, success, result, snapshotConfiguration);
+                final String snapshotName = (String) a[3];
+                final String operation = (String) a[4];
+                final boolean success = (boolean) a[5];
+                final Map<String, Object> snapshotConfiguration = (Map<String, Object>) a[6];
+                final String errorDetails = (String) a[7];
+                return new SnapshotCreationHistoryItem(timestamp, policyId, repository, snapshotName, operation, success,
+                    snapshotConfiguration, errorDetails);
             });
 
     static {
         PARSER.declareLong(ConstructingObjectParser.constructorArg(), TIMESTAMP);
         PARSER.declareString(ConstructingObjectParser.constructorArg(), POLICY_ID);
         PARSER.declareString(ConstructingObjectParser.constructorArg(), REPOSITORY);
+        PARSER.declareString(ConstructingObjectParser.constructorArg(), SNAPSHOT_NAME);
         PARSER.declareString(ConstructingObjectParser.constructorArg(), OPERATION);
         PARSER.declareBoolean(ConstructingObjectParser.constructorArg(), SUCCESS);
         PARSER.declareObject(ConstructingObjectParser.constructorArg(), (p, c) -> p.map(), SNAPSHOT_CONFIG);
-        PARSER.declareObject(ConstructingObjectParser.constructorArg(), SnapshotInvocationRecord::parse, RESULT);
+        PARSER.declareStringOrNull(ConstructingObjectParser.constructorArg(), ERROR_DETAILS);
     }
 
-    public SnapshotCreationHistoryItem(long timestamp, String policyId, String repository, String operation, boolean success,
-                                       SnapshotInvocationRecord result, Map<String, Object> snapshotConfiguration) {
-        super(timestamp, policyId, repository, operation, success);
+    public SnapshotCreationHistoryItem(long timestamp, String policyId, String repository, String snapshotName, String operation,
+                                       boolean success, Map<String, Object> snapshotConfiguration, String errorDetails) {
+        super(timestamp, policyId, repository, snapshotName, operation, success);
         this.snapshotConfiguration = Objects.requireNonNull(snapshotConfiguration);
-        this.result = Objects.requireNonNull(result);
+        this.errorDetails = errorDetails;
     }
 
     public SnapshotCreationHistoryItem(StreamInput in) throws IOException {
         super(in);
         this.snapshotConfiguration = in.readMap();
-        this.result = new SnapshotInvocationRecord(in);
+        this.errorDetails = in.readOptionalString();
     }
 
     public Map<String, Object> getSnapshotConfiguration() {
         return snapshotConfiguration;
     }
 
-    public SnapshotInvocationRecord getResult() {
-        return result;
+    public String getErrorDetails() {
+        return errorDetails;
     }
 
     @Override
     protected void innerWriteTo(StreamOutput out) throws IOException {
         out.writeMap(snapshotConfiguration);
-        result.writeTo(out);
+        out.writeOptionalString(errorDetails);
     }
 
     @Override
     protected XContentBuilder innerToXContent(XContentBuilder builder, Params params) throws IOException {
         builder.field(SNAPSHOT_CONFIG.getPreferredName(), snapshotConfiguration);
-        builder.field(RESULT.getPreferredName(), result);
+        builder.field(ERROR_DETAILS.getPreferredName(), errorDetails);
         return builder;
     }
 
@@ -95,11 +99,11 @@ public class SnapshotCreationHistoryItem extends SnapshotHistoryItem {
         if (!super.equals(o)) return false;
         SnapshotCreationHistoryItem that = (SnapshotCreationHistoryItem) o;
         return Objects.equals(getSnapshotConfiguration(), that.getSnapshotConfiguration()) &&
-            Objects.equals(getResult(), that.getResult());
+            Objects.equals(getErrorDetails(), that.getErrorDetails());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), getSnapshotConfiguration(), getResult());
+        return Objects.hash(super.hashCode(), getSnapshotConfiguration(), getErrorDetails());
     }
 }
