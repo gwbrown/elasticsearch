@@ -22,6 +22,8 @@ public class SnapshotLifecycleTemplateRegistry extends IndexTemplateRegistry {
     public static final String SLM_TEMPLATE_VERSION_VARIABLE = "xpack.slm.template.version";
     public static final String SLM_TEMPLATE_NAME = ".slm-history";
 
+    public static final String SLM_POLICY_NAME = "slm-history-ilm-policy";
+
     public static final IndexTemplateConfig TEMPLATE_SLM_HISTORY = new IndexTemplateConfig(
         SLM_TEMPLATE_NAME,
         "/slm-history.json",
@@ -29,7 +31,11 @@ public class SnapshotLifecycleTemplateRegistry extends IndexTemplateRegistry {
         SLM_TEMPLATE_VERSION_VARIABLE
     );
 
-    // NOCOMMIT tests
+    public static final LifecyclePolicyConfig SLM_HISTORY_POLICY = new LifecyclePolicyConfig(
+        SLM_POLICY_NAME,
+        "/slm-history-ilm-policy.json"
+    );
+
     public SnapshotLifecycleTemplateRegistry(Settings nodeSettings, ClusterService clusterService, ThreadPool threadPool, Client client,
                                              NamedXContentRegistry xContentRegistry) {
         super(nodeSettings, clusterService, threadPool, client, xContentRegistry);
@@ -42,7 +48,7 @@ public class SnapshotLifecycleTemplateRegistry extends IndexTemplateRegistry {
 
     @Override
     protected List<LifecyclePolicyConfig> getPolicyConfigs() {
-        return Collections.emptyList();
+        return Collections.singletonList(SLM_HISTORY_POLICY);
     }
 
     @Override
