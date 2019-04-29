@@ -1,4 +1,4 @@
-package org.elasticsearch.xpack.snapshotlifecycle.history;
+package org.elasticsearch.xpack.core.snapshotlifecycle.history;
 
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;

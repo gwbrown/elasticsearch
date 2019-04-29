@@ -65,6 +65,7 @@ import org.elasticsearch.xpack.core.snapshotlifecycle.action.DeleteSnapshotLifec
 import org.elasticsearch.xpack.core.snapshotlifecycle.action.ExecuteSnapshotLifecycleAction;
 import org.elasticsearch.xpack.core.snapshotlifecycle.action.GetSnapshotLifecycleAction;
 import org.elasticsearch.xpack.core.snapshotlifecycle.action.PutSnapshotLifecycleAction;
+import org.elasticsearch.xpack.core.snapshotlifecycle.history.SnapshotLifecycleTemplateRegistry;
 import org.elasticsearch.xpack.indexlifecycle.action.RestDeleteLifecycleAction;
 import org.elasticsearch.xpack.indexlifecycle.action.RestExplainLifecycleAction;
 import org.elasticsearch.xpack.indexlifecycle.action.RestGetLifecycleAction;
@@ -95,7 +96,6 @@ import org.elasticsearch.xpack.snapshotlifecycle.action.TransportDeleteSnapshotL
 import org.elasticsearch.xpack.snapshotlifecycle.action.TransportExecuteSnapshotLifecycleAction;
 import org.elasticsearch.xpack.snapshotlifecycle.action.TransportGetSnapshotLifecycleAction;
 import org.elasticsearch.xpack.snapshotlifecycle.action.TransportPutSnapshotLifecycleAction;
-import org.elasticsearch.xpack.snapshotlifecycle.history.SnapshotLifecycleTemplateRegistry;
 
 import java.io.IOException;
 import java.time.Clock;
