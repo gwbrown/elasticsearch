@@ -1,3 +1,9 @@
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
+
 package org.elasticsearch.xpack.core.snapshotlifecycle.history;
 
 import org.apache.logging.log4j.LogManager;
@@ -25,7 +31,7 @@ import static org.elasticsearch.xpack.core.snapshotlifecycle.history.SnapshotLif
 
 public class SnapshotHistoryStore implements ClusterStateListener {
     private static final Logger logger = LogManager.getLogger(SnapshotHistoryStore.class);
-    private static final DateFormatter indexTimeFormat = DateFormatter.forPattern("yyyy.MM.dd");
+    private static final DateFormatter indexTimeFormat = DateFormatter.forPattern("yyyy.MM");
 
     public static final String SLM_HISTORY_INDEX_PREFIX = ".slm-history-" + INDEX_TEMPLATE_VERSION + "-";
 
@@ -34,7 +40,6 @@ public class SnapshotHistoryStore implements ClusterStateListener {
     private final ZoneId timeZone;
     private final AtomicBoolean readyToIndex = new AtomicBoolean(false);
 
-    // NOCOMMIT tests
     public SnapshotHistoryStore(SnapshotLifecycleTemplateRegistry registry, Client client, ZoneId timeZone,
                                 ClusterService clusterService) {
         this.registry = registry;

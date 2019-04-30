@@ -83,8 +83,8 @@ public class SnapshotCreationHistoryItemTests extends AbstractSerializingTestCas
                         SnapshotCreationHistoryItemTests::randomSnapshotConfiguration),
                     instance.getErrorDetails());
             case 7:
-                return new SnapshotCreationHistoryItem(instance.getTimestamp(), instance.getPolicyId(), instance.getRepository(), instance.getSnapshotName(),
-                    instance.getOperation(), instance.isSuccess(), instance.getSnapshotConfiguration(),
+                return new SnapshotCreationHistoryItem(instance.getTimestamp(), instance.getPolicyId(), instance.getRepository(),
+                    instance.getSnapshotName(), instance.getOperation(), instance.isSuccess(), instance.getSnapshotConfiguration(),
                     randomValueOtherThan(instance.getErrorDetails(), () -> randomAlphaOfLengthBetween(10, 20)));
             default:
                 throw new IllegalArgumentException("illegal randomization: " + branch);
