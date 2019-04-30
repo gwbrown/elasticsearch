@@ -224,14 +224,7 @@ public class SnapshotLifecycleTemplateRegistryTests extends ESTestCase {
     private ClusterChangedEvent createClusterChangedEvent(List<String> existingTemplateNames,
                                                           Map<String, LifecyclePolicy> existingPolicies,
                                                           DiscoveryNodes nodes) {
-        return createClusterChangedEvent(Settings.EMPTY, existingTemplateNames, existingPolicies, nodes);
-    }
-
-    private ClusterChangedEvent createClusterChangedEvent(Settings nodeSettings,
-                                                          List<String> existingTemplateNames,
-                                                          Map<String, LifecyclePolicy> existingPolicies,
-                                                          DiscoveryNodes nodes) {
-        ClusterState cs = createClusterState(nodeSettings, existingTemplateNames, existingPolicies, nodes);
+        ClusterState cs = createClusterState(Settings.EMPTY, existingTemplateNames, existingPolicies, nodes);
         ClusterChangedEvent realEvent = new ClusterChangedEvent("created-from-test", cs,
             ClusterState.builder(new ClusterName("test")).build());
         ClusterChangedEvent event = spy(realEvent);
