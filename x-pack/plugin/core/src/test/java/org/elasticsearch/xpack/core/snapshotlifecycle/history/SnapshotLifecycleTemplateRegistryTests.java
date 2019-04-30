@@ -261,9 +261,5 @@ public class SnapshotLifecycleTemplateRegistryTests extends ESTestCase {
         TestPutIndexTemplateResponse(boolean acknowledged) {
             super(acknowledged);
         }
-
-        TestPutIndexTemplateResponse() {
-            super();
-        }
     }
 }
