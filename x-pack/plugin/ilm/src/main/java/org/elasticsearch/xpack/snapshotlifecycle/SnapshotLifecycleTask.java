@@ -30,7 +30,6 @@ import org.elasticsearch.xpack.core.snapshotlifecycle.SnapshotLifecyclePolicyMet
 import org.elasticsearch.xpack.indexlifecycle.LifecyclePolicySecurityClient;
 
 import java.io.IOException;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,12 +44,10 @@ public class SnapshotLifecycleTask implements SchedulerEngine.Listener {
 
     private final Client client;
     private final ClusterService clusterService;
-    private final Clock clock;
 
-    public SnapshotLifecycleTask(final Client client, final ClusterService clusterService, final Clock clock) {
+    public SnapshotLifecycleTask(final Client client, final ClusterService clusterService) {
         this.client = client;
         this.clusterService = clusterService;
-        this.clock = clock;
     }
 
     @Override
