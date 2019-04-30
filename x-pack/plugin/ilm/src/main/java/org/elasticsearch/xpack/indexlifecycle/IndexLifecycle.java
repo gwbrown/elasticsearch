@@ -158,7 +158,7 @@ public class IndexLifecycle extends Plugin implements ActionPlugin {
         indexLifecycleInitialisationService.set(new IndexLifecycleService(settings, client, clusterService, threadPool,
                 getClock(), System::currentTimeMillis, xContentRegistry));
         snapshotLifecycleService.set(new SnapshotLifecycleService(settings,
-            () -> new SnapshotLifecycleTask(client, clusterService), clusterService, getClock()));
+            () -> new SnapshotLifecycleTask(client, clusterService, getClock()), clusterService, getClock()));
         new SnapshotLifecycleTemplateRegistry(settings, clusterService, threadPool, client, xContentRegistry);
         return Arrays.asList(indexLifecycleInitialisationService.get(), snapshotLifecycleService.get());
     }

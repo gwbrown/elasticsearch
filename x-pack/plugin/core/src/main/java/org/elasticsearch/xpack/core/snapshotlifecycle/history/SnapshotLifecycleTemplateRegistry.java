@@ -1,16 +1,23 @@
 package org.elasticsearch.xpack.core.snapshotlifecycle.history;
 
 import org.elasticsearch.client.Client;
+import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.xpack.core.indexlifecycle.IndexLifecycleMetadata;
+import org.elasticsearch.xpack.core.indexlifecycle.LifecyclePolicy;
 import org.elasticsearch.xpack.core.template.IndexTemplateConfig;
 import org.elasticsearch.xpack.core.template.IndexTemplateRegistry;
 import org.elasticsearch.xpack.core.template.LifecyclePolicyConfig;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.elasticsearch.xpack.core.ClientHelper.INDEX_LIFECYCLE_ORIGIN;
 
@@ -54,5 +61,24 @@ public class SnapshotLifecycleTemplateRegistry extends IndexTemplateRegistry {
     @Override
     protected String getOrigin() {
         return INDEX_LIFECYCLE_ORIGIN; // TODO use separate SLM origin?
+    }
+
+    public boolean validate(ClusterState state) {
+        boolean allTemplatesPresent = getTemplateConfigs().stream()
+            .map(IndexTemplateConfig::getTemplateName)
+            .allMatch(name -> state.metaData().getTemplates().containsKey(name));
+
+        Optional<Map<String, LifecyclePolicy>> maybePolicies = Optional
+            .<IndexLifecycleMetadata>ofNullable(state.metaData().custom(IndexLifecycleMetadata.TYPE))
+            .map(IndexLifecycleMetadata::getPolicies);
+        Set<String> policyNames = getPolicyConfigs().stream()
+            .map(LifecyclePolicyConfig::getPolicyName)
+            .collect(Collectors.toSet());
+
+        boolean allPoliciesPresent = maybePolicies
+            .map(policies -> policies.keySet()
+                .containsAll(policyNames))
+            .orElse(false);
+        return allTemplatesPresent && allPoliciesPresent;
     }
 }
