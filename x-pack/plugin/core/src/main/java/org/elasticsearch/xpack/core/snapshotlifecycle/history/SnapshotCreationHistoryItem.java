@@ -6,19 +6,28 @@
 
 package org.elasticsearch.xpack.core.snapshotlifecycle.history;
 
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest;
 import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.ParseField;
+import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ConstructingObjectParser;
+import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.elasticsearch.ElasticsearchException.REST_EXCEPTION_SKIP_STACK_TRACE;
+
 public class SnapshotCreationHistoryItem extends SnapshotHistoryItem {
+    private static final String CREATE_OPERATION = "CREATE";
 
     private final Map<String, Object> snapshotConfiguration;
     @Nullable
@@ -54,11 +63,32 @@ public class SnapshotCreationHistoryItem extends SnapshotHistoryItem {
         PARSER.declareStringOrNull(ConstructingObjectParser.constructorArg(), ERROR_DETAILS);
     }
 
-    public SnapshotCreationHistoryItem(long timestamp, String policyId, String repository, String snapshotName, String operation,
+    SnapshotCreationHistoryItem(long timestamp, String policyId, String repository, String snapshotName, String operation,
                                        boolean success, Map<String, Object> snapshotConfiguration, String errorDetails) {
         super(timestamp, policyId, repository, snapshotName, operation, success);
         this.snapshotConfiguration = Objects.requireNonNull(snapshotConfiguration);
         this.errorDetails = errorDetails;
+    }
+
+    public static SnapshotCreationHistoryItem successRecord(long timestamp, String policyId, CreateSnapshotRequest request,
+                                                            Map<String, Object> snapshotConfiguration) {
+        return new SnapshotCreationHistoryItem(timestamp, policyId, request.repository(), request.snapshot(), CREATE_OPERATION, true,
+            snapshotConfiguration, null);
+    }
+
+    public static SnapshotCreationHistoryItem failureRecord(long timeStamp, String policyId, CreateSnapshotRequest request,
+                                                            Map<String, Object> snapshotConfiguration,
+                                                            Exception exception) throws IOException {
+        ToXContent.Params stacktraceParams = new ToXContent.MapParams(Collections.singletonMap(REST_EXCEPTION_SKIP_STACK_TRACE, "false"));
+        String exceptionString;
+        try (XContentBuilder causeXContentBuilder = JsonXContent.contentBuilder()) {
+            causeXContentBuilder.startObject();
+            ElasticsearchException.generateThrowableXContent(causeXContentBuilder, stacktraceParams, exception);
+            causeXContentBuilder.endObject();
+            exceptionString = BytesReference.bytes(causeXContentBuilder).utf8ToString();
+        }
+        return new SnapshotCreationHistoryItem(timeStamp, policyId, request.repository(), request.snapshot(), CREATE_OPERATION, false,
+            snapshotConfiguration, exceptionString);
     }
 
     public SnapshotCreationHistoryItem(StreamInput in) throws IOException {

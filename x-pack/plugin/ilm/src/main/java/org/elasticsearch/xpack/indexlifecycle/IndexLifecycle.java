@@ -65,6 +65,7 @@ import org.elasticsearch.xpack.core.snapshotlifecycle.action.DeleteSnapshotLifec
 import org.elasticsearch.xpack.core.snapshotlifecycle.action.ExecuteSnapshotLifecycleAction;
 import org.elasticsearch.xpack.core.snapshotlifecycle.action.GetSnapshotLifecycleAction;
 import org.elasticsearch.xpack.core.snapshotlifecycle.action.PutSnapshotLifecycleAction;
+import org.elasticsearch.xpack.core.snapshotlifecycle.history.SnapshotHistoryStore;
 import org.elasticsearch.xpack.core.snapshotlifecycle.history.SnapshotLifecycleTemplateRegistry;
 import org.elasticsearch.xpack.indexlifecycle.action.RestDeleteLifecycleAction;
 import org.elasticsearch.xpack.indexlifecycle.action.RestExplainLifecycleAction;
@@ -111,6 +112,7 @@ import static java.util.Collections.emptyList;
 public class IndexLifecycle extends Plugin implements ActionPlugin {
     private final SetOnce<IndexLifecycleService> indexLifecycleInitialisationService = new SetOnce<>();
     private final SetOnce<SnapshotLifecycleService> snapshotLifecycleService = new SetOnce<>();
+    private final SetOnce<SnapshotHistoryStore> snapshotHistoryStore = new SetOnce<>();
     private Settings settings;
     private boolean enabled;
     private boolean transportClientMode;
@@ -157,10 +159,12 @@ public class IndexLifecycle extends Plugin implements ActionPlugin {
         }
         indexLifecycleInitialisationService.set(new IndexLifecycleService(settings, client, clusterService, threadPool,
                 getClock(), System::currentTimeMillis, xContentRegistry));
+        SnapshotLifecycleTemplateRegistry templateRegistry = new SnapshotLifecycleTemplateRegistry(settings, clusterService, threadPool,
+            client, xContentRegistry);
+        snapshotHistoryStore.set(new SnapshotHistoryStore(templateRegistry, client, getClock().getZone(), clusterService));
         snapshotLifecycleService.set(new SnapshotLifecycleService(settings,
-            () -> new SnapshotLifecycleTask(client, clusterService), clusterService, getClock()));
-        new SnapshotLifecycleTemplateRegistry(settings, clusterService, threadPool, client, xContentRegistry);
-        return Arrays.asList(indexLifecycleInitialisationService.get(), snapshotLifecycleService.get());
+            () -> new SnapshotLifecycleTask(client, clusterService, snapshotHistoryStore.get()), clusterService, getClock()));
+        return Arrays.asList(indexLifecycleInitialisationService.get(), snapshotLifecycleService.get(), snapshotHistoryStore.get());
     }
 
     @Override
