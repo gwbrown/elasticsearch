@@ -6,7 +6,10 @@
 
 package org.elasticsearch.xpack.slm.action;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
@@ -14,10 +17,12 @@ import org.elasticsearch.rest.action.RestToXContentListener;
 import org.elasticsearch.xpack.core.slm.action.ExecuteSnapshotLifecycleAction;
 
 public class RestExecuteSnapshotLifecycleAction extends BaseRestHandler {
+    private static final Logger logger = LogManager.getLogger(RestExecuteSnapshotLifecycleAction.class);
+    private static final DeprecationLogger deprecationLogger = new DeprecationLogger(logger);
 
     public RestExecuteSnapshotLifecycleAction(RestController controller) {
-        controller.registerHandler(RestRequest.Method.PUT, "/_slm/policy/{name}/_execute", this);
-        controller.registerHandler(RestRequest.Method.POST, "/_slm/policy/{name}/_execute", this);
+        controller.registerWithDeprecatedHandler(RestRequest.Method.POST, "/_slm/policy/{name}/_execute", this,
+            RestRequest.Method.PUT, "/_slm/policy/{name}/_execute", deprecationLogger);
     }
 
     @Override
