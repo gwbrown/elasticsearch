@@ -132,6 +132,7 @@ import org.elasticsearch.plugins.PluginsService;
 import org.elasticsearch.plugins.RepositoryPlugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.plugins.SearchPlugin;
+import org.elasticsearch.plugins.SystemIndexPlugin;
 import org.elasticsearch.repositories.RepositoriesModule;
 import org.elasticsearch.repositories.RepositoriesService;
 import org.elasticsearch.rest.RestController;
@@ -174,6 +175,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -430,6 +432,11 @@ public class Node implements Closeable {
 
             final AliasValidator aliasValidator = new AliasValidator();
 
+            final Predicate<String> compositeSystemIndexPredicate = pluginsService.filterPlugins(SystemIndexPlugin.class)
+                .stream()
+                .map(SystemIndexPlugin::getSystemIndexPredicate)
+                .reduce(Predicate::or)
+                .orElse(i -> false);
             final MetaDataCreateIndexService metaDataCreateIndexService = new MetaDataCreateIndexService(
                     settings,
                     clusterService,
@@ -440,6 +447,7 @@ public class Node implements Closeable {
                     settingsModule.getIndexScopedSettings(),
                     threadPool,
                     xContentRegistry,
+                    compositeSystemIndexPredicate,
                     forbidPrivateIndexSettings);
 
             Collection<Object> pluginComponents = pluginsService.filterPlugins(Plugin.class).stream()

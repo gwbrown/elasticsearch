@@ -52,6 +52,7 @@ import org.elasticsearch.common.UUIDs;
 import org.elasticsearch.common.ValidationException;
 import org.elasticsearch.common.compress.CompressedXContent;
 import org.elasticsearch.common.io.PathUtils;
+import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.common.settings.IndexScopedSettings;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
@@ -98,6 +99,7 @@ import static org.elasticsearch.cluster.metadata.IndexMetaData.SETTING_NUMBER_OF
  */
 public class MetaDataCreateIndexService {
     private static final Logger logger = LogManager.getLogger(MetaDataCreateIndexService.class);
+    private static final DeprecationLogger deprecationLogger = new DeprecationLogger(logger);
 
     public static final int MAX_INDEX_NAME_BYTES = 255;
 
@@ -110,19 +112,21 @@ public class MetaDataCreateIndexService {
     private final IndexScopedSettings indexScopedSettings;
     private final ActiveShardsObserver activeShardsObserver;
     private final NamedXContentRegistry xContentRegistry;
+    private final Predicate<String> systemIndexNamePredicate;
     private final boolean forbidPrivateIndexSettings;
 
     public MetaDataCreateIndexService(
-            final Settings settings,
-            final ClusterService clusterService,
-            final IndicesService indicesService,
-            final AllocationService allocationService,
-            final AliasValidator aliasValidator,
-            final Environment env,
-            final IndexScopedSettings indexScopedSettings,
-            final ThreadPool threadPool,
-            final NamedXContentRegistry xContentRegistry,
-            final boolean forbidPrivateIndexSettings) {
+        final Settings settings,
+        final ClusterService clusterService,
+        final IndicesService indicesService,
+        final AllocationService allocationService,
+        final AliasValidator aliasValidator,
+        final Environment env,
+        final IndexScopedSettings indexScopedSettings,
+        final ThreadPool threadPool,
+        final NamedXContentRegistry xContentRegistry,
+        final Predicate<String> systemIndexNamePredicate,
+        final boolean forbidPrivateIndexSettings) {
         this.settings = settings;
         this.clusterService = clusterService;
         this.indicesService = indicesService;
@@ -132,16 +136,24 @@ public class MetaDataCreateIndexService {
         this.indexScopedSettings = indexScopedSettings;
         this.activeShardsObserver = new ActiveShardsObserver(clusterService, threadPool);
         this.xContentRegistry = xContentRegistry;
+        this.systemIndexNamePredicate = systemIndexNamePredicate;
         this.forbidPrivateIndexSettings = forbidPrivateIndexSettings;
     }
 
     /**
      * Validate the name for an index against some static rules and a cluster state.
      */
-    public static void validateIndexName(String index, ClusterState state) {
+    public static void validateIndexName(String index, ClusterState state, Predicate<String> systemIndexNamePredicate) {
         validateIndexOrAliasName(index, InvalidIndexNameException::new);
         if (!index.toLowerCase(Locale.ROOT).equals(index)) {
             throw new InvalidIndexNameException(index, "must be lowercase");
+        }
+        if (index.startsWith(".") && systemIndexNamePredicate.test(index) == false) {
+            deprecationLogger.deprecated("index name [{}] has a leading \".\", which will not be allowed for non-system indices in " +
+                "the next major version");
+            logger.error("TRIGGERED the dot index check for [{}]", index); //NOCOMMIT
+        } else {
+            logger.error("DID NOT trigger the dot index check for [{}]", index); //NOCOMMIT
         }
         if (state.routingTable().hasIndex(index)) {
             throw new ResourceAlreadyExistsException(state.routingTable().index(index).getIndex());
@@ -591,7 +603,7 @@ public class MetaDataCreateIndexService {
     }
 
     private void validate(CreateIndexClusterStateUpdateRequest request, ClusterState state) {
-        validateIndexName(request.index(), state);
+        validateIndexName(request.index(), state, systemIndexNamePredicate);
         validateIndexSettings(request.index(), request.settings(), forbidPrivateIndexSettings);
     }
 

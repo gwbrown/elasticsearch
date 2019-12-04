@@ -45,6 +45,7 @@ import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ReloadablePlugin;
 import org.elasticsearch.plugins.ScriptPlugin;
+import org.elasticsearch.plugins.SystemIndexPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptContext;
@@ -185,10 +186,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -197,7 +200,7 @@ import static java.util.Collections.emptyList;
 import static org.elasticsearch.common.settings.Setting.Property.NodeScope;
 import static org.elasticsearch.xpack.core.ClientHelper.WATCHER_ORIGIN;
 
-public class Watcher extends Plugin implements ActionPlugin, ScriptPlugin, ReloadablePlugin {
+public class Watcher extends Plugin implements ActionPlugin, ScriptPlugin, ReloadablePlugin, SystemIndexPlugin {
 
     // This setting is only here for backward compatibility reasons as 6.x indices made use of it. It can be removed in 8.x.
     @Deprecated
@@ -681,5 +684,13 @@ public class Watcher extends Plugin implements ActionPlugin, ScriptPlugin, Reloa
             return;
         }
         reloadableServices.forEach(s -> s.reload(settings));
+    }
+
+    @Override
+    public Predicate<String> getSystemIndexPredicate() {
+        return name -> Objects.nonNull(name) &&
+            (name.startsWith(".watches")
+                || name.startsWith(".watcher-history")
+                || name.startsWith(".triggered_watches"));
     }
 }
