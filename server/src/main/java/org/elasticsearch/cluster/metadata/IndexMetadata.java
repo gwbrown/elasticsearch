@@ -340,9 +340,13 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
     static final String KEY_MAPPINGS = "mappings";
     static final String KEY_ALIASES = "aliases";
     static final String KEY_ROLLOVER_INFOS = "rollover_info";
+    static final String KEY_SYSTEM = "system";
     public static final String KEY_PRIMARY_TERMS = "primary_terms";
 
     public static final String INDEX_STATE_FILE_PREFIX = "state-";
+
+    private static final Version SYSTEM_INDEX_FLAG_ADDED = Version.V_8_0_0;
+
     private final int routingNumShards;
     private final int routingFactor;
     private final int routingPartitionSize;
@@ -770,7 +774,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
                 DiffableUtils.StringSetValueSerializer.getInstance());
             rolloverInfos = DiffableUtils.readImmutableOpenMapDiff(in, DiffableUtils.getStringKeySerializer(), RolloverInfo::new,
                 RolloverInfo::readDiffFrom);
-            if (in.getVersion().onOrAfter(Version.V_8_0_0)) {
+            if (in.getVersion().onOrAfter(SYSTEM_INDEX_FLAG_ADDED)) {
                 isSystem = in.readBoolean();
             } else {
                 isSystem = false;
@@ -795,7 +799,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
             customData.writeTo(out);
             inSyncAllocationIds.writeTo(out);
             rolloverInfos.writeTo(out);
-            if (out.getVersion().onOrAfter(Version.V_8_0_0)) {
+            if (out.getVersion().onOrAfter(SYSTEM_INDEX_FLAG_ADDED)) {
                 out.writeBoolean(isSystem);
             }
         }
@@ -859,7 +863,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
         for (int i = 0; i < rolloverAliasesSize; i++) {
             builder.putRolloverInfo(new RolloverInfo(in));
         }
-        if (in.getVersion().onOrAfter(Version.V_8_0_0)) {
+        if (in.getVersion().onOrAfter(SYSTEM_INDEX_FLAG_ADDED)) {
             builder.system(in.readBoolean());
         }
         return builder.build();
@@ -900,7 +904,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
         for (ObjectCursor<RolloverInfo> cursor : rolloverInfos.values()) {
             cursor.value.writeTo(out);
         }
-        if (out.getVersion().onOrAfter(Version.V_8_0_0)) {
+        if (out.getVersion().onOrAfter(SYSTEM_INDEX_FLAG_ADDED)) {
             out.writeBoolean(isSystem);
         }
     }
@@ -1378,7 +1382,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
                 cursor.value.toXContent(builder, params);
             }
             builder.endObject();
-            builder.field("system", indexMetadata.isSystem);
+            builder.field(KEY_SYSTEM, indexMetadata.isSystem);
 
             builder.endObject();
         }
@@ -1506,7 +1510,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
                         builder.aliasesVersion(parser.longValue());
                     } else if (KEY_ROUTING_NUM_SHARDS.equals(currentFieldName)) {
                         builder.setRoutingNumShards(parser.intValue());
-                    } else if ("system".equals(currentFieldName)) {
+                    } else if (KEY_SYSTEM.equals(currentFieldName)) {
                         builder.system(parser.booleanValue());
                     } else {
                         throw new IllegalArgumentException("Unexpected field [" + currentFieldName + "]");
