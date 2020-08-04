@@ -84,7 +84,7 @@ public class SystemIndexIT extends ESIntegTestCase { //G-> Probably move this
         }
     }
 
-    // This test doesn't work because it's not a real system index
+    @AwaitsFix(bugUrl = "https://github.com/gwbrown") //G-> yell at me if this makes it anywhere other than my private branch
     public void testSystemIndexAccessThroughDefaultClientBlocked() {
         final String systemIndex = ".system-index";
         CreateIndexResponse createResponse = client().admin().indices().prepareCreate(systemIndex)
