@@ -20,8 +20,10 @@ import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.metadata.AliasMetadata;
+import org.elasticsearch.cluster.metadata.IndexAbstraction;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.metadata.IndexTemplateMetadata;
+import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.cluster.routing.IndexRoutingTable;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
@@ -30,6 +32,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.indices.SystemIndexDescriptor;
 import org.elasticsearch.xpack.core.common.notifications.AbstractAuditMessage;
@@ -397,9 +400,18 @@ public final class TransformInternalIndex {
     }
 
     protected static boolean allPrimaryShardsActiveForLatestVersionedIndex(ClusterState state) {
-        IndexRoutingTable indexRouting = state.routingTable().index(TransformInternalIndexConstants.LATEST_INDEX_VERSIONED_NAME);
+        IndexRoutingTable indexRouting = state.routingTable()
+            .index(resolveConcreteIndex(TransformInternalIndexConstants.LATEST_INDEX_VERSIONED_NAME, state.metadata()));
 
         return indexRouting != null && indexRouting.allPrimaryShardsActive();
+    }
+
+    private static Index resolveConcreteIndex(String indexName, Metadata metadata) {
+        final IndexAbstraction indexAbstraction = metadata.getIndicesLookup().get(indexName);
+        if (indexAbstraction == null || indexAbstraction.getWriteIndex() == null) {
+            return null;
+        }
+        return indexAbstraction.getWriteIndex().getIndex();
     }
 
     protected static boolean hasLatestAuditIndexTemplate(ClusterState state) {

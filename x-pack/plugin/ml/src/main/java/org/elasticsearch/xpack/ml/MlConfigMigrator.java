@@ -163,7 +163,7 @@ public class MlConfigMigrator {
             return;
         }
 
-        if (clusterState.metadata().hasIndex(MlConfigIndex.indexName()) == false) {
+        if (clusterState.metadata().hasConcreteIndex(MlConfigIndex.indexName()) == false) {
             createConfigIndex(ActionListener.wrap(
                     response -> {
                         unMarkMigrationInProgress.onResponse(Boolean.FALSE);

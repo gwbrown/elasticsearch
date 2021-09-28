@@ -7,8 +7,11 @@
 package org.elasticsearch.xpack.core.ml;
 
 import org.elasticsearch.Version;
+import org.elasticsearch.cluster.metadata.IndexAbstraction;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
+import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.xpack.core.template.TemplateUtils;
 
@@ -26,6 +29,14 @@ public final class MlConfigIndex {
      */
     public static String indexName() {
         return INDEX_NAME;
+    }
+
+    public static Index resolveConcreteIndex(Metadata metadata) {
+        final IndexAbstraction indexAbstraction = metadata.getIndicesLookup().get(indexName());
+        if (indexAbstraction == null || indexAbstraction.getWriteIndex() == null) {
+            return null;
+        }
+        return indexAbstraction.getWriteIndex().getIndex();
     }
 
     public static String mapping() {
