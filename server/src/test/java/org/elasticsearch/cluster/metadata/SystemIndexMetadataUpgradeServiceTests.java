@@ -31,7 +31,7 @@ public class SystemIndexMetadataUpgradeServiceTests extends ESTestCase {
     private static final String SYSTEM_INDEX_NAME = ".myindex-1";
     private static final SystemIndexDescriptor DESCRIPTOR = SystemIndexDescriptor.builder()
         .setIndexPattern(".myindex-*")
-        .setPrimaryIndex(SYSTEM_INDEX_NAME)
+        .setAliasName(SYSTEM_INDEX_NAME)
         .setSettings(getSettingsBuilder().build())
         .setMappings(MAPPINGS)
         .setVersionMetaKey("version")

@@ -144,7 +144,7 @@ public final class AsyncTaskIndexService<R extends AsyncResponse<R>> {
         return SystemIndexDescriptor.builder()
             .setIndexPattern(XPackPlugin.ASYNC_RESULTS_INDEX + "*")
             .setDescription("Async search results")
-            .setPrimaryIndex(XPackPlugin.ASYNC_RESULTS_INDEX)
+            .setAliasName(XPackPlugin.ASYNC_RESULTS_INDEX)
             .setMappings(mappings())
             .setSettings(settings())
             .setVersionMetaKey("version")

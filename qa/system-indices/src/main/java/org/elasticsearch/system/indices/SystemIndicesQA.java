@@ -72,7 +72,7 @@ public class SystemIndicesQA extends Plugin implements SystemIndexPlugin, Action
                 )
                 .setOrigin("net-new")
                 .setVersionMetaKey("version")
-                .setPrimaryIndex(".net-new-system-index-" + Version.CURRENT.major)
+                .setAliasName(".net-new-system-index-" + Version.CURRENT.major)
                 .build()
         );
     }

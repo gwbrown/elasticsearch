@@ -19,7 +19,6 @@ import org.elasticsearch.indices.SystemIndices;
 import org.elasticsearch.indices.SystemIndices.Feature;
 import org.elasticsearch.indices.TestIndexNameExpressionResolver;
 import org.elasticsearch.xpack.core.XPackPlugin;
-import org.elasticsearch.xpack.core.security.index.RestrictedIndicesNames;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -107,7 +106,6 @@ public class TestRestrictedIndices {
         return getInitializedDescriptorBuilder()
             // This can't just be `.security-*` because that would overlap with the tokens index pattern
             .setIndexPattern(".security-[0-9]+")
-            .setPrimaryIndex(RestrictedIndicesNames.INTERNAL_SECURITY_MAIN_INDEX_7)
             .setDescription("Contains Security configuration")
             .setAliasName(SECURITY_MAIN_ALIAS)
             .setIndexFormat(7)
@@ -119,7 +117,6 @@ public class TestRestrictedIndices {
     private static SystemIndexDescriptor getSecurityTokensDescriptor() {
         return getInitializedDescriptorBuilder()
             .setIndexPattern(".security-tokens-[0-9]+")
-            .setPrimaryIndex(RestrictedIndicesNames.INTERNAL_SECURITY_TOKENS_INDEX_7)
             .setDescription("Contains auth token data")
             .setAliasName(SECURITY_TOKENS_ALIAS)
             .setIndexFormat(7)
@@ -132,7 +129,7 @@ public class TestRestrictedIndices {
         return getInitializedDescriptorBuilder()
             .setIndexPattern(XPackPlugin.ASYNC_RESULTS_INDEX + "*")
             .setDescription("Async search results")
-            .setPrimaryIndex(XPackPlugin.ASYNC_RESULTS_INDEX)
+            .setAliasName(XPackPlugin.ASYNC_RESULTS_INDEX)
             .setOrigin(ASYNC_SEARCH_ORIGIN)
             .build();
     }

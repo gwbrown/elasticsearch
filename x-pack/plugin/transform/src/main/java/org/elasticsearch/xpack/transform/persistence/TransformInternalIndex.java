@@ -95,7 +95,7 @@ public final class TransformInternalIndex {
     public static SystemIndexDescriptor getSystemIndexDescriptor() throws IOException {
         return SystemIndexDescriptor.builder()
             .setIndexPattern(TransformInternalIndexConstants.INDEX_NAME_PATTERN)
-            .setPrimaryIndex(TransformInternalIndexConstants.LATEST_INDEX_NAME)
+            .setAliasName(TransformInternalIndexConstants.LATEST_INDEX_NAME)
             .setDescription("Contains Transform configuration data")
             .setMappings(mappings())
             .setSettings(settings())

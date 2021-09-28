@@ -231,7 +231,6 @@ public class TransportGetAliasesActionTests extends ESTestCase {
         SystemIndexDescriptor netNewDescriptor = SystemIndexDescriptor.builder()
             .setIndexPattern(".b")
             .setAliasName(".y")
-            .setPrimaryIndex(".b")
             .setDescription(this.getTestName())
             .setMappings("{\"_meta\":  {\"version\":  \"1.0.0\"}}")
             .setSettings(Settings.EMPTY)

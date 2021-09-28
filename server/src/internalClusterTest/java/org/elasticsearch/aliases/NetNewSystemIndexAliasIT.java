@@ -83,7 +83,7 @@ public class NetNewSystemIndexAliasIT extends ESIntegTestCase {
 
                 return Collections.singletonList(SystemIndexDescriptor.builder()
                     .setIndexPattern(SYSTEM_INDEX_NAME + "*")
-                    .setPrimaryIndex(SYSTEM_INDEX_NAME)
+                    .setAliasName(SYSTEM_INDEX_NAME)
                     .setDescription("Test system index")
                     .setOrigin(getClass().getName())
                     .setVersionMetaKey("version")

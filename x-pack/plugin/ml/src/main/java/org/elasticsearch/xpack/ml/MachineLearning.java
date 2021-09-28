@@ -1372,7 +1372,7 @@ public class MachineLearning extends Plugin implements SystemIndexPlugin,
         return List.of(
             SystemIndexDescriptor.builder()
                 .setIndexPattern(MlMetaIndex.indexName() + "*")
-                .setPrimaryIndex(MlMetaIndex.indexName())
+                .setAliasName(MlMetaIndex.indexName())
                 .setDescription("Contains scheduling and anomaly tracking metadata")
                 .setMappings(MlMetaIndex.mapping())
                 .setSettings(MlMetaIndex.settings())
@@ -1381,7 +1381,7 @@ public class MachineLearning extends Plugin implements SystemIndexPlugin,
                 .build(),
             SystemIndexDescriptor.builder()
                 .setIndexPattern(MlConfigIndex.indexName() + "*")
-                .setPrimaryIndex(MlConfigIndex.indexName())
+                .setAliasName(MlConfigIndex.indexName())
                 .setDescription("Contains ML configuration data")
                 .setMappings(MlConfigIndex.mapping())
                 .setSettings(MlConfigIndex.settings())
@@ -1395,7 +1395,7 @@ public class MachineLearning extends Plugin implements SystemIndexPlugin,
     public static SystemIndexDescriptor getInferenceIndexSecurityDescriptor() {
         return SystemIndexDescriptor.builder()
             .setIndexPattern(InferenceIndexConstants.INDEX_PATTERN)
-            .setPrimaryIndex(InferenceIndexConstants.LATEST_INDEX_NAME)
+            .setAliasName(InferenceIndexConstants.LATEST_INDEX_NAME)
             .setDescription("Contains ML model configuration and statistics")
             .setMappings(InferenceIndexConstants.mapping())
             .setSettings(InferenceIndexConstants.settings())

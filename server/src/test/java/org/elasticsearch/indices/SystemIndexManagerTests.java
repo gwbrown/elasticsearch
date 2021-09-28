@@ -92,7 +92,7 @@ public class SystemIndexManagerTests extends ESTestCase {
         SystemIndexDescriptor d1 = new SystemIndexDescriptor(".foo-1", "");
         SystemIndexDescriptor d2 = SystemIndexDescriptor.builder()
             .setIndexPattern(".bar-*")
-            .setPrimaryIndex(".bar-1")
+            .setAliasName(".bar-1")
             .setMappings(getMappings())
             .setSettings(getSettings())
             .setVersionMetaKey("version")
@@ -122,7 +122,7 @@ public class SystemIndexManagerTests extends ESTestCase {
     public void testManagerSkipsDescriptorsForIndicesThatDoNotExist() {
         SystemIndexDescriptor d1 = SystemIndexDescriptor.builder()
             .setIndexPattern(".foo-*")
-            .setPrimaryIndex(".foo-1")
+            .setAliasName(".foo-1")
             .setMappings(getMappings())
             .setSettings(getSettings())
             .setVersionMetaKey("version")
@@ -130,7 +130,7 @@ public class SystemIndexManagerTests extends ESTestCase {
             .build();
         SystemIndexDescriptor d2 = SystemIndexDescriptor.builder()
             .setIndexPattern(".bar-*")
-            .setPrimaryIndex(".bar-1")
+            .setAliasName(".bar-1")
             .setMappings(getMappings())
             .setSettings(getSettings())
             .setVersionMetaKey("version")

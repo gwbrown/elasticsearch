@@ -645,7 +645,7 @@ public class Watcher extends Plugin implements SystemIndexPlugin, ScriptPlugin, 
         return List.of(
             SystemIndexDescriptor.builder()
                 .setIndexPattern(Watch.INDEX + "*")
-                .setPrimaryIndex(Watch.INDEX)
+                .setAliasName(Watch.INDEX)
                 .setDescription("Contains Watch definitions")
                 .setMappings(getWatchesIndexMappings())
                 .setSettings(getWatchesIndexSettings())
@@ -654,7 +654,7 @@ public class Watcher extends Plugin implements SystemIndexPlugin, ScriptPlugin, 
                 .build(),
             SystemIndexDescriptor.builder()
                 .setIndexPattern(TriggeredWatchStoreField.INDEX_NAME + "*")
-                .setPrimaryIndex(TriggeredWatchStoreField.INDEX_NAME)
+                .setAliasName(TriggeredWatchStoreField.INDEX_NAME)
                 .setDescription("Used to track current and queued Watch execution")
                 .setMappings(getTriggeredWatchesIndexMappings())
                 .setSettings(getTriggeredWatchesIndexSettings())

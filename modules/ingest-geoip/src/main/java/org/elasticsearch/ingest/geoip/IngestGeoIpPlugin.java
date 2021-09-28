@@ -170,7 +170,7 @@ public class IngestGeoIpPlugin extends Plugin implements IngestPlugin, SystemInd
                 .build())
             .setOrigin(INGEST_ORIGIN)
             .setVersionMetaKey("version")
-            .setPrimaryIndex(DATABASES_INDEX)
+            .setAliasName(DATABASES_INDEX)
             .setNetNew()
             .build();
         return Collections.singleton(geoipDatabasesIndex);

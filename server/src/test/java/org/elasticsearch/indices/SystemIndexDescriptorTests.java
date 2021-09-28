@@ -72,7 +72,7 @@ public class SystemIndexDescriptorTests extends ESTestCase {
             final String primaryIndex = randomAlphaOfLength(5);
             Exception ex = expectThrows(
                 IllegalArgumentException.class,
-                () -> SystemIndexDescriptor.builder().setIndexPattern("." + primaryIndex).setPrimaryIndex(primaryIndex).build()
+                () -> SystemIndexDescriptor.builder().setIndexPattern("." + primaryIndex).setAliasName(primaryIndex).build()
             );
             assertThat(
                 ex.getMessage(),
@@ -83,7 +83,7 @@ public class SystemIndexDescriptorTests extends ESTestCase {
             final String primaryIndex = "." + randomAlphaOfLength(5) + "*";
             Exception ex = expectThrows(
                 IllegalArgumentException.class,
-                () -> SystemIndexDescriptor.builder().setIndexPattern("." + randomAlphaOfLength(5)).setPrimaryIndex(primaryIndex).build()
+                () -> SystemIndexDescriptor.builder().setIndexPattern("." + randomAlphaOfLength(5)).setAliasName(primaryIndex).build()
             );
             assertThat(
                 ex.getMessage(),
@@ -146,7 +146,6 @@ public class SystemIndexDescriptorTests extends ESTestCase {
                 SystemIndexDescriptor.builder()
                     .setIndexPattern(".system*")
                     .setDescription("system stuff")
-                    .setPrimaryIndex(".system-1")
                     .setAliasName(".system")
                     .setType(Type.INTERNAL_MANAGED)
                     .setSettings(Settings.EMPTY)
@@ -196,7 +195,6 @@ public class SystemIndexDescriptorTests extends ESTestCase {
         final SystemIndexDescriptor prior = SystemIndexDescriptor.builder()
             .setIndexPattern(".system*")
             .setDescription("system stuff")
-            .setPrimaryIndex(".system-1")
             .setAliasName(".system")
             .setType(Type.INTERNAL_MANAGED)
             .setSettings(Settings.EMPTY)
@@ -208,7 +206,6 @@ public class SystemIndexDescriptorTests extends ESTestCase {
         final SystemIndexDescriptor descriptor = SystemIndexDescriptor.builder()
             .setIndexPattern(".system*")
             .setDescription("system stuff")
-            .setPrimaryIndex(".system-1")
             .setAliasName(".system")
             .setType(Type.INTERNAL_MANAGED)
             .setSettings(Settings.EMPTY)
@@ -239,7 +236,6 @@ public class SystemIndexDescriptorTests extends ESTestCase {
         SystemIndexDescriptor.Builder builder = SystemIndexDescriptor.builder()
             .setIndexPattern(".system*")
             .setDescription("system stuff")
-            .setPrimaryIndex(".system-1")
             .setAliasName(".system")
             .setType(Type.INTERNAL_MANAGED)
             .setMappings(MAPPINGS)
@@ -260,7 +256,6 @@ public class SystemIndexDescriptorTests extends ESTestCase {
         return SystemIndexDescriptor.builder()
             .setIndexPattern(".system*")
             .setDescription("system stuff")
-            .setPrimaryIndex(".system-1")
             .setAliasName(".system")
             .setType(Type.INTERNAL_MANAGED)
             .setSettings(Settings.EMPTY)
