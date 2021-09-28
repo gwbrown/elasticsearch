@@ -169,7 +169,7 @@ public class SystemIndexDescriptorTests extends ESTestCase {
 
         // different primary index
         iae = expectThrows(IllegalArgumentException.class, () -> priorSystemIndexDescriptorBuilder()
-            .setPrimaryIndex(".system-2")
+            .setInitialIndexName(".system-2")
             .setMinimumNodeVersion(Version.V_7_5_0)
             .setPriorSystemIndexDescriptors(List.of(prior))
             .build());

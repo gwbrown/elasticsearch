@@ -312,7 +312,7 @@ public class DatabaseRegistryTests extends ESTestCase {
     }
 
     private static RoutingTable createIndexRoutingTable() {
-        Index index = new Index(GeoIpDownloader.DATABASES_INDEX, UUID.randomUUID().toString());
+        Index index = new Index(GeoIpDownloader.DATABASES_INDEX_ALIAS, UUID.randomUUID().toString());
         ShardRouting shardRouting = ShardRouting.newUnassigned(
             new ShardId(index, 0),
             true,

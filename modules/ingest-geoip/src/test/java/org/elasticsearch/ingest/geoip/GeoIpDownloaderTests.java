@@ -147,11 +147,11 @@ public class GeoIpDownloaderTests extends ESTestCase {
 
     public void testIndexChunksNoData() throws IOException {
         client.addHandler(FlushAction.INSTANCE, (FlushRequest request, ActionListener<FlushResponse> flushResponseActionListener) -> {
-            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX}, request.indices());
+            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX_ALIAS }, request.indices());
             flushResponseActionListener.onResponse(mock(FlushResponse.class));
         });
         client.addHandler(RefreshAction.INSTANCE, (RefreshRequest request, ActionListener<RefreshResponse> flushResponseActionListener) -> {
-            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX}, request.indices());
+            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX_ALIAS }, request.indices());
             flushResponseActionListener.onResponse(mock(RefreshResponse.class));
         });
 
@@ -161,11 +161,11 @@ public class GeoIpDownloaderTests extends ESTestCase {
 
     public void testIndexChunksMd5Mismatch() {
         client.addHandler(FlushAction.INSTANCE, (FlushRequest request, ActionListener<FlushResponse> flushResponseActionListener) -> {
-            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX}, request.indices());
+            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX_ALIAS }, request.indices());
             flushResponseActionListener.onResponse(mock(FlushResponse.class));
         });
         client.addHandler(RefreshAction.INSTANCE, (RefreshRequest request, ActionListener<RefreshResponse> flushResponseActionListener) -> {
-            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX}, request.indices());
+            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX_ALIAS }, request.indices());
             flushResponseActionListener.onResponse(mock(RefreshResponse.class));
         });
 
@@ -199,11 +199,11 @@ public class GeoIpDownloaderTests extends ESTestCase {
             listener.onResponse(mock(IndexResponse.class));
         });
         client.addHandler(FlushAction.INSTANCE, (FlushRequest request, ActionListener<FlushResponse> flushResponseActionListener) -> {
-            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX}, request.indices());
+            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX_ALIAS }, request.indices());
             flushResponseActionListener.onResponse(mock(FlushResponse.class));
         });
         client.addHandler(RefreshAction.INSTANCE, (RefreshRequest request, ActionListener<RefreshResponse> flushResponseActionListener) -> {
-            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX}, request.indices());
+            assertArrayEquals(new String[] {GeoIpDownloader.DATABASES_INDEX_ALIAS }, request.indices());
             flushResponseActionListener.onResponse(mock(RefreshResponse.class));
         });
 

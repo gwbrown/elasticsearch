@@ -11,6 +11,7 @@ import org.elasticsearch.cluster.routing.IndexRoutingTable;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.indices.SystemIndices;
 import org.elasticsearch.persistent.PersistentTasksCustomMetadata;
 import org.elasticsearch.xpack.core.ml.MlConfigIndex;
 import org.elasticsearch.xpack.core.ml.MlMetadata;
@@ -58,7 +59,8 @@ public class MlConfigMigrationEligibilityCheck {
             return false;
         }
 
-        IndexRoutingTable routingTable = clusterState.getRoutingTable().index(MlConfigIndex.resolveConcreteIndex(clusterState.metadata()));
+        IndexRoutingTable routingTable = clusterState.getRoutingTable()
+            .index(SystemIndices.resolveSystemAlias(MlConfigIndex.indexName(), clusterState.metadata()).getIndex());
         if (routingTable == null || routingTable.allPrimaryShardsActive() == false) {
             return false;
         }

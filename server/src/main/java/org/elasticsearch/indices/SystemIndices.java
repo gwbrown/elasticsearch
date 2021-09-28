@@ -19,6 +19,7 @@ import org.elasticsearch.action.admin.indices.delete.DeleteIndexAction;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.cluster.metadata.IndexAbstraction;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -151,6 +152,18 @@ public class SystemIndices {
         return productToSystemIndicesMap.entrySet().stream()
             .collect(Collectors.toUnmodifiableMap(Entry::getKey, entry ->
                 new CharacterRunAutomaton(MinimizationOperations.minimize(entry.getValue(), Integer.MAX_VALUE))));
+    }
+
+    public static IndexMetadata resolveSystemAlias(String aliasName, Metadata metadata) {
+        if (aliasName == null) {
+            // If there's no alias, this descriptor doesn't have a "primary index"
+            return null;
+        }
+        final IndexAbstraction indexAbstraction = metadata.getIndicesLookup().get(aliasName);
+        if (indexAbstraction == null || indexAbstraction.getWriteIndex() == null) {
+            return null;
+        }
+        return indexAbstraction.getWriteIndex();
     }
 
     /**

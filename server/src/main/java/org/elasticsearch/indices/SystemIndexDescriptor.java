@@ -21,6 +21,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.core.Nullable;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.util.ArrayList;
@@ -43,10 +44,9 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
     private final String indexPattern;
 
     /**
-     * For internally-managed indices, specifies the name of the concrete index to create and update. This is required
-     * since the {@link #indexPattern} can match many indices.
+     * For internally-managed indices, specifies the name of the concrete index to create and update.
      */
-    private final String primaryIndex;
+    private final String initialIndexName;
 
     /** A description of the index or indices */
     private final String description;
@@ -133,7 +133,7 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
      * by Elasticsearch internally if mappings or settings are provided.
      *
      * @param indexPattern The pattern of index names that this descriptor will be used for. Must start with a '.' character.
-     * @param primaryIndex The primary index name of this descriptor. Used when creating the system index for the first time.
+     * @param initialIndexName The primary index name of this descriptor. Used when creating the system index for the first time.
      * @param description The name of the plugin responsible for this system index.
      * @param mappings The mappings to apply to this index when auto-creating, if appropriate
      * @param settings The settings to apply to this index when auto-creating, if appropriate
@@ -151,7 +151,7 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
      */
     SystemIndexDescriptor(
         String indexPattern,
-        String primaryIndex,
+        String initialIndexName,
         String description,
         String mappings,
         Settings settings,
@@ -185,15 +185,15 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
             );
         }
 
-        if (primaryIndex != null) {
-            if (primaryIndex.charAt(0) != '.') {
+        if (initialIndexName != null) {
+            if (initialIndexName.charAt(0) != '.') {
                 throw new IllegalArgumentException(
-                    "system primary index provided as [" + primaryIndex + "] but must start with the character [.]"
+                    "system primary index provided as [" + initialIndexName + "] but must start with the character [.]"
                 );
             }
-            if (primaryIndex.matches("^\\.[\\w-]+$") == false) {
+            if (initialIndexName.matches("^\\.[\\w-]+$") == false) {
                 throw new IllegalArgumentException(
-                    "system primary index provided as [" + primaryIndex + "] but cannot contain special characters or patterns"
+                    "system primary index provided as [" + initialIndexName + "] but cannot contain special characters or patterns"
                 );
             }
         }
@@ -208,7 +208,7 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
         if (type.isManaged()) {
             Objects.requireNonNull(settings, "Must supply settings for a managed system index");
             Strings.requireNonEmpty(mappings, "Must supply mappings for a managed system index");
-            Strings.requireNonEmpty(primaryIndex, "Must supply primaryIndex for a managed system index");
+            Strings.requireNonEmpty(aliasName, "Must supply aliasName for a managed system index");
             Strings.requireNonEmpty(versionMetaKey, "Must supply versionMetaKey for a managed system index");
             Strings.requireNonEmpty(origin, "Must supply origin for a managed system index");
             this.mappingVersion = extractVersionFromMappings(mappings, versionMetaKey);;
@@ -248,7 +248,7 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
                 if (prior.indexPattern.equals(indexPattern) == false) {
                     throw new IllegalArgumentException("index pattern must be the same");
                 }
-                if (prior.primaryIndex.equals(primaryIndex) == false) {
+                if (prior.initialIndexName.equals(initialIndexName) == false) {
                     throw new IllegalArgumentException("primary index must be the same");
                 }
                 if (prior.aliasName.equals(aliasName) == false) {
@@ -270,12 +270,12 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
         }
 
         this.indexPattern = indexPattern;
-        this.primaryIndex = primaryIndex;
+        this.initialIndexName = initialIndexName;
         this.aliasName = aliasName;
 
         final Automaton automaton = buildAutomaton(indexPattern, aliasName);
         this.indexPatternAutomaton = new CharacterRunAutomaton(automaton);
-        if (primaryIndex != null && indexPatternAutomaton.run(primaryIndex) == false) {
+        if (initialIndexName != null && indexPatternAutomaton.run(initialIndexName) == false) {
             throw new IllegalArgumentException("primary index does not match the index pattern!");
         }
 
@@ -324,8 +324,18 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
      * @return The concrete name of an index being managed internally to Elasticsearch. Will be {@code null}
      * for indices managed externally to Elasticsearch.
      */
-    public String getPrimaryIndex() {
-        return primaryIndex;
+    public String getInitialIndexName() {
+        return initialIndexName;
+    }
+
+    /**
+     * Resolves the primary index for this descriptor, or {@code null} if it doesn't exist or has no specific primary index.
+     * @param metadata The current cluster metadata.
+     * @return The {@link IndexMetadata} for the primary index for this descriptor.
+     */
+    @Nullable
+    public IndexMetadata getPrimaryIndex(Metadata metadata) {
+        return SystemIndices.resolveSystemAlias(aliasName, metadata);
     }
 
     /**
@@ -444,7 +454,7 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
             Locale.ROOT,
             "[%s] failed - system index [%s] requires all data and master nodes to be at least version [%s]",
             cause,
-            this.getPrimaryIndex(),
+            this.getAliasName(),
             actualMinimumVersion
         );
     }
@@ -532,7 +542,7 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
      */
     public static class Builder {
         private String indexPattern;
-        private String primaryIndex;
+        private String initialIndexName;
         private String description;
         private String mappings = null;
         private Settings settings = null;
@@ -554,8 +564,8 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
             return this;
         }
 
-        public Builder setPrimaryIndex(String primaryIndex) {
-            this.primaryIndex = primaryIndex;
+        public Builder setInitialIndexName(String initialIndexName) {
+            this.initialIndexName = initialIndexName;
             return this;
         }
 
@@ -636,8 +646,7 @@ public class SystemIndexDescriptor implements IndexPatternMatcher, Comparable<Sy
         public SystemIndexDescriptor build() {
 
             return new SystemIndexDescriptor(
-                indexPattern,
-                primaryIndex,
+                indexPattern, initialIndexName,
                 description,
                 mappings,
                 settings,

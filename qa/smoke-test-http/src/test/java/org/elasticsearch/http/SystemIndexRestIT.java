@@ -161,6 +161,7 @@ public class SystemIndexRestIT extends HttpSmokeTestCase {
                 return Collections.singletonList(SystemIndexDescriptor.builder()
                     .setIndexPattern(SYSTEM_INDEX_NAME + "*")
                     .setAliasName(SYSTEM_INDEX_NAME)
+                    .setInitialIndexName(SYSTEM_INDEX_NAME + "-1")
                     .setDescription("Test system index")
                     .setOrigin(getClass().getName())
                     .setVersionMetaKey("version")

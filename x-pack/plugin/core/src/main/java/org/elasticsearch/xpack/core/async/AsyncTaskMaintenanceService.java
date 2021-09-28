@@ -14,8 +14,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterChangedEvent;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.ClusterStateListener;
-import org.elasticsearch.cluster.metadata.IndexAbstraction;
-import org.elasticsearch.cluster.metadata.Metadata;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.routing.IndexRoutingTable;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
@@ -24,10 +23,10 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.EsRejectedExecutionException;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.gateway.GatewayService;
-import org.elasticsearch.index.Index;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.reindex.DeleteByQueryAction;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
+import org.elasticsearch.indices.SystemIndices;
 import org.elasticsearch.threadpool.Scheduler;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.xpack.core.XPackPlugin;
@@ -108,7 +107,8 @@ public class AsyncTaskMaintenanceService extends AbstractLifecycleComponent impl
         if (lifecycle.stoppedOrClosed()) {
             return;
         }
-        IndexRoutingTable indexRouting = state.routingTable().index(resolveConcreteIndex(index, state.metadata()));
+        final IndexMetadata indexMetadata = SystemIndices.resolveSystemAlias(index, state.metadata());
+        IndexRoutingTable indexRouting = indexMetadata != null ? state.routingTable().index(indexMetadata.getIndex()) : null;
         if (indexRouting == null) {
             stopCleanup();
             return;
@@ -122,14 +122,6 @@ public class AsyncTaskMaintenanceService extends AbstractLifecycleComponent impl
         } else {
             stopCleanup();
         }
-    }
-
-    private static Index resolveConcreteIndex(String indexName, Metadata metadata) {
-        final IndexAbstraction indexAbstraction = metadata.getIndicesLookup().get(indexName);
-        if (indexAbstraction == null || indexAbstraction.getWriteIndex() == null) {
-            return null;
-        }
-        return indexAbstraction.getWriteIndex().getIndex();
     }
 
     synchronized void executeNextCleanup() {

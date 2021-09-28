@@ -404,6 +404,7 @@ public class SearchableSnapshots extends Plugin implements IndexStorePlugin, Eng
                 .setIndexPattern(SNAPSHOT_BLOB_CACHE_INDEX)
                 .setDescription("Contains cached data of blob store repositories")
                 .setAliasName(SNAPSHOT_BLOB_CACHE_INDEX)
+                .setInitialIndexName(SNAPSHOT_BLOB_CACHE_INDEX + "-1")
                 .setMappings(getIndexMappings())
                 .setSettings(getIndexSettings())
                 .setOrigin(SEARCHABLE_SNAPSHOTS_ORIGIN)

@@ -65,7 +65,8 @@ import java.util.function.Supplier;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.mapper.MapperService.SINGLE_MAPPING_NAME;
 import static org.elasticsearch.ingest.IngestService.INGEST_ORIGIN;
-import static org.elasticsearch.ingest.geoip.GeoIpDownloader.DATABASES_INDEX;
+import static org.elasticsearch.ingest.geoip.GeoIpDownloader.DATABASES_INDEX_ALIAS;
+import static org.elasticsearch.ingest.geoip.GeoIpDownloader.DATABASES_INITIAL_INDEX;
 import static org.elasticsearch.ingest.geoip.GeoIpDownloader.GEOIP_DOWNLOADER;
 
 public class IngestGeoIpPlugin extends Plugin implements IngestPlugin, SystemIndexPlugin, Closeable, PersistentTaskPlugin, ActionPlugin {
@@ -160,7 +161,7 @@ public class IngestGeoIpPlugin extends Plugin implements IngestPlugin, SystemInd
     @Override
     public Collection<SystemIndexDescriptor> getSystemIndexDescriptors(Settings settings) {
         SystemIndexDescriptor geoipDatabasesIndex = SystemIndexDescriptor.builder()
-            .setIndexPattern(DATABASES_INDEX)
+            .setIndexPattern(DATABASES_INDEX_ALIAS)
             .setDescription("GeoIP databases")
             .setMappings(mappings())
             .setSettings(Settings.builder()
@@ -170,7 +171,8 @@ public class IngestGeoIpPlugin extends Plugin implements IngestPlugin, SystemInd
                 .build())
             .setOrigin(INGEST_ORIGIN)
             .setVersionMetaKey("version")
-            .setAliasName(DATABASES_INDEX)
+            .setAliasName(DATABASES_INDEX_ALIAS)
+            .setInitialIndexName(DATABASES_INITIAL_INDEX)
             .setNetNew()
             .build();
         return Collections.singleton(geoipDatabasesIndex);
@@ -209,7 +211,7 @@ public class IngestGeoIpPlugin extends Plugin implements IngestPlugin, SystemInd
                 .endObject()
                 .endObject();
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to build mappings for " + DATABASES_INDEX, e);
+            throw new UncheckedIOException("Failed to build mappings for " + DATABASES_INDEX_ALIAS, e);
         }
     }
 }

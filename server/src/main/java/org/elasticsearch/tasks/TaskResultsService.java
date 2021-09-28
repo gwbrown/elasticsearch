@@ -55,6 +55,7 @@ public class TaskResultsService {
     public static final SystemIndexDescriptor TASKS_DESCRIPTOR = SystemIndexDescriptor.builder()
         .setIndexPattern(TASK_INDEX + "*")
         .setAliasName(TASK_INDEX)
+        .setInitialIndexName(TASK_INDEX + "-1")
         .setDescription("Task Result Index")
         .setSettings(getTaskResultIndexSettings())
         .setMappings(getTaskResultIndexMappings())

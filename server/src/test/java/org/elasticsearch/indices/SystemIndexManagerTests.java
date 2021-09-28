@@ -58,12 +58,14 @@ public class SystemIndexManagerTests extends ESTestCase {
     private static final ClusterName CLUSTER_NAME = new ClusterName("security-index-manager-tests");
     private static final ClusterState EMPTY_CLUSTER_STATE = new ClusterState.Builder(CLUSTER_NAME).build();
 
-    private static final String SYSTEM_INDEX_NAME = ".myindex-1";
+    private static final String SYSTEM_IDX_ALIAS = ".myindex";
+    private static final String SYSTEM_IDX_INITIAL_NAME = SYSTEM_IDX_ALIAS + "-1";
+    private static final String SYSTEM_IDX_PATTERN = SYSTEM_IDX_ALIAS + "*";
 
     private static final SystemIndexDescriptor DESCRIPTOR = SystemIndexDescriptor.builder()
-        .setIndexPattern(".myindex-*")
-        .setPrimaryIndex(SYSTEM_INDEX_NAME)
-        .setAliasName(".myindex")
+        .setIndexPattern(SYSTEM_IDX_PATTERN)
+        .setInitialIndexName(SYSTEM_IDX_INITIAL_NAME)
+        .setAliasName(SYSTEM_IDX_ALIAS)
         .setIndexFormat(6)
         .setSettings(getSettings())
         .setMappings(getMappings())
@@ -92,7 +94,8 @@ public class SystemIndexManagerTests extends ESTestCase {
         SystemIndexDescriptor d1 = new SystemIndexDescriptor(".foo-1", "");
         SystemIndexDescriptor d2 = SystemIndexDescriptor.builder()
             .setIndexPattern(".bar-*")
-            .setAliasName(".bar-1")
+            .setAliasName(".bar")
+            .setInitialIndexName(".bar-1")
             .setMappings(getMappings())
             .setSettings(getSettings())
             .setVersionMetaKey("version")
@@ -122,7 +125,8 @@ public class SystemIndexManagerTests extends ESTestCase {
     public void testManagerSkipsDescriptorsForIndicesThatDoNotExist() {
         SystemIndexDescriptor d1 = SystemIndexDescriptor.builder()
             .setIndexPattern(".foo-*")
-            .setAliasName(".foo-1")
+            .setAliasName(".foo")
+            .setInitialIndexName(".foo-1")
             .setMappings(getMappings())
             .setSettings(getSettings())
             .setVersionMetaKey("version")
@@ -130,7 +134,8 @@ public class SystemIndexManagerTests extends ESTestCase {
             .build();
         SystemIndexDescriptor d2 = SystemIndexDescriptor.builder()
             .setIndexPattern(".bar-*")
-            .setAliasName(".bar-1")
+            .setAliasName(".bar")
+            .setInitialIndexName(".bar-1")
             .setMappings(getMappings())
             .setSettings(getSettings())
             .setVersionMetaKey("version")
@@ -276,15 +281,15 @@ public class SystemIndexManagerTests extends ESTestCase {
     private ClusterState markShardsAvailable(ClusterState.Builder clusterStateBuilder) {
         final ClusterState cs = clusterStateBuilder.build();
         return ClusterState.builder(cs)
-            .routingTable(buildIndexRoutingTable(cs.metadata().index(DESCRIPTOR.getPrimaryIndex()).getIndex()))
+            .routingTable(buildIndexRoutingTable(DESCRIPTOR.getPrimaryIndex(cs.metadata()).getIndex()))
             .build();
     }
 
     private ClusterState markShardsUnavailable(ClusterState.Builder clusterStateBuilder) {
         final ClusterState cs = clusterStateBuilder.build();
-        final RoutingTable routingTable = buildIndexRoutingTable(cs.metadata().index(DESCRIPTOR.getPrimaryIndex()).getIndex());
+        final RoutingTable routingTable = buildIndexRoutingTable(DESCRIPTOR.getPrimaryIndex(cs.metadata()).getIndex());
 
-        Index prevIndex = routingTable.index(DESCRIPTOR.getPrimaryIndex()).getIndex();
+        Index prevIndex = routingTable.index(DESCRIPTOR.getPrimaryIndex(cs.metadata()).getIndex()).getIndex();
 
         final RoutingTable unavailableRoutingTable = RoutingTable.builder()
             .add(
@@ -318,9 +323,7 @@ public class SystemIndexManagerTests extends ESTestCase {
         int format,
         IndexMetadata.State state
     ) {
-        IndexMetadata.Builder indexMetadata = IndexMetadata.builder(
-            descriptor.getPrimaryIndex() == null ? descriptor.getIndexPattern() : descriptor.getPrimaryIndex()
-        );
+        IndexMetadata.Builder indexMetadata = IndexMetadata.builder(descriptor.getInitialIndexName());
 
         final Settings.Builder settingsBuilder = Settings.builder();
         if (descriptor.getSettings() != null) {
@@ -396,7 +399,7 @@ public class SystemIndexManagerTests extends ESTestCase {
             builder.endObject();
             return builder;
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to build " + SYSTEM_INDEX_NAME + " index mappings", e);
+            throw new UncheckedIOException("Failed to build " + SYSTEM_IDX_INITIAL_NAME + " index mappings", e);
         }
     }
 
@@ -424,7 +427,7 @@ public class SystemIndexManagerTests extends ESTestCase {
             builder.endObject();
             return builder;
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to build " + SYSTEM_INDEX_NAME + " index mappings", e);
+            throw new UncheckedIOException("Failed to build " + SYSTEM_IDX_INITIAL_NAME + " index mappings", e);
         }
     }
 }

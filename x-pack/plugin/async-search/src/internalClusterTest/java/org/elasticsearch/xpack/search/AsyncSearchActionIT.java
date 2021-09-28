@@ -10,6 +10,7 @@ package org.elasticsearch.xpack.search;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
+import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.core.TimeValue;
@@ -45,6 +46,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.notNullValue;
 
 @SuiteScopeTestCase
 public class AsyncSearchActionIT extends AsyncSearchIntegTestCase {
@@ -423,7 +425,15 @@ public class AsyncSearchActionIT extends AsyncSearchIntegTestCase {
         assertThat(response.getExpirationTime(), greaterThan(now));
 
         // remove the async search index
-        client().admin().indices().prepareDelete(XPackPlugin.ASYNC_RESULTS_INDEX).get();
+        GetAliasesResponse aliasesResponse = client().admin().indices().prepareGetAliases(XPackPlugin.ASYNC_RESULTS_INDEX).get();
+        assertThat(XPackPlugin.ASYNC_RESULTS_INDEX + " has more than one alias", aliasesResponse.getAliases().size(), equalTo(1));
+        String concreteIndexName = aliasesResponse.getAliases().stream()
+            .filter(entry -> entry.getValue().stream().anyMatch(alias -> XPackPlugin.ASYNC_RESULTS_INDEX.equals(alias.alias())))
+            .map(Map.Entry::getKey)
+            .findFirst()
+            .orElse(null);
+        assertThat(concreteIndexName, notNullValue());
+        client().admin().indices().prepareDelete(concreteIndexName).get();
 
         Exception exc = expectThrows(Exception.class, () -> getAsyncSearch(response.getId()));
         Throwable cause = exc instanceof ExecutionException ?

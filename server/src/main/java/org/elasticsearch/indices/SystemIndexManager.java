@@ -25,6 +25,7 @@ import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.ClusterStateListener;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.cluster.health.ClusterIndexHealth;
+import org.elasticsearch.cluster.metadata.IndexAbstraction;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.cluster.metadata.Metadata;
@@ -96,7 +97,7 @@ public class SystemIndexManager implements ClusterStateListener {
                     descriptors.size()
                 );
 
-                descriptors.forEach(descriptor -> upgradeIndexMetadata(descriptor, listener));
+                descriptors.forEach(descriptor -> upgradeIndexMetadata(descriptor, state.metadata(), listener));
             } else {
                 isUpgradeInProgress.set(false);
             }
@@ -115,7 +116,7 @@ public class SystemIndexManager implements ClusterStateListener {
         return this.systemIndices.getSystemIndexDescriptors()
             .stream()
             .filter(SystemIndexDescriptor::isAutomaticallyManaged)
-            .filter(d -> metadata.hasConcreteIndex(d.getPrimaryIndex()))
+            .filter(d -> d.getPrimaryIndex(metadata) != null)
             .collect(Collectors.toList());
     }
 
@@ -138,7 +139,11 @@ public class SystemIndexManager implements ClusterStateListener {
     UpgradeStatus getUpgradeStatus(ClusterState clusterState, SystemIndexDescriptor descriptor) {
         final State indexState = calculateIndexState(clusterState, descriptor);
 
-        final String indexDescription = "[" + descriptor.getPrimaryIndex() + "] (alias [" + descriptor.getAliasName() + "])";
+        final String indexDescription = "["
+            + descriptor.getPrimaryIndex(clusterState.metadata())
+            + "] (alias ["
+            + descriptor.getAliasName()
+            + "])";
 
         // The messages below will be logged on every cluster state update, which is why even in the index closed / red
         // cases, the log levels are DEBUG.
@@ -179,8 +184,8 @@ public class SystemIndexManager implements ClusterStateListener {
      * @param descriptor information about the system index
      * @param listener a listener to call upon success or failure
      */
-    private void upgradeIndexMetadata(SystemIndexDescriptor descriptor, ActionListener<AcknowledgedResponse> listener) {
-        final String indexName = descriptor.getPrimaryIndex();
+    private void upgradeIndexMetadata(SystemIndexDescriptor descriptor, Metadata metadata, ActionListener<AcknowledgedResponse> listener) {
+        final String indexName = descriptor.getPrimaryIndex(metadata).getIndex().getName();
 
         PutMappingRequest request = new PutMappingRequest(indexName).source(descriptor.getMappings(), XContentType.JSON);
 
@@ -213,11 +218,25 @@ public class SystemIndexManager implements ClusterStateListener {
      * @return a summary of the index state, or <code>null</code> if the index doesn't exist
      */
     State calculateIndexState(ClusterState state, SystemIndexDescriptor descriptor) {
-        final IndexMetadata indexMetadata = state.metadata().index(descriptor.getPrimaryIndex());
+        IndexAbstraction indexAbstraction = state.metadata().getIndicesLookup().get(descriptor.getAliasName());
+
+        if (indexAbstraction == null) {
+            return null;
+        }
+
+        IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
 
         if (indexMetadata == null) {
             return null;
         }
+
+        assert indexAbstraction.getIndices().size() <= 1 : "alias ["
+            + descriptor.getAliasName()
+            + "] given in descriptor with pattern ["
+            + descriptor.getIndexPattern()
+            + "] has more than one referent: ["
+            + indexAbstraction.getIndices().stream().map(imd -> imd.getIndex().getName()).collect(Collectors.toList())
+            + "]";
 
         final boolean isIndexUpToDate = INDEX_FORMAT_SETTING.get(indexMetadata.getSettings()) == descriptor.getIndexFormat();
 
@@ -252,15 +271,14 @@ public class SystemIndexManager implements ClusterStateListener {
             return false;
         }
 
-        return Version.CURRENT.onOrBefore(readMappingVersion(descriptor, mappingMetadata));
+        return Version.CURRENT.onOrBefore(readMappingVersion(descriptor, indexMetadata.getIndex().getName(), mappingMetadata));
     }
 
     /**
      * Fetches the mapping version from an index's mapping's `_meta` info.
      */
     @SuppressWarnings("unchecked")
-    private Version readMappingVersion(SystemIndexDescriptor descriptor, MappingMetadata mappingMetadata) {
-        final String indexName = descriptor.getPrimaryIndex();
+    private Version readMappingVersion(SystemIndexDescriptor descriptor, String indexName, MappingMetadata mappingMetadata) {
         try {
             Map<String, Object> meta = (Map<String, Object>) mappingMetadata.sourceAsMap().get("_meta");
             if (meta == null) {

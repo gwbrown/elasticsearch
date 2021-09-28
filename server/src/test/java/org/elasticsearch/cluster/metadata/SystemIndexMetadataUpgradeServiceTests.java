@@ -28,10 +28,14 @@ import static org.mockito.Mockito.mock;
 public class SystemIndexMetadataUpgradeServiceTests extends ESTestCase {
 
     private static final String MAPPINGS = "{ \"_doc\": { \"_meta\": { \"version\": \"7.4.0\" } } }";
-    private static final String SYSTEM_INDEX_NAME = ".myindex-1";
+    private static final String SYSTEM_IDX_ALIAS = ".myindex";
+    private static final String SYSTEM_IDX_INITIAL_NAME = SYSTEM_IDX_ALIAS + "-1";
+    private static final String SYSTEM_IDX_PATTERN = SYSTEM_IDX_ALIAS + "*";
+
     private static final SystemIndexDescriptor DESCRIPTOR = SystemIndexDescriptor.builder()
-        .setIndexPattern(".myindex-*")
-        .setAliasName(SYSTEM_INDEX_NAME)
+        .setIndexPattern(SYSTEM_IDX_PATTERN)
+        .setAliasName(SYSTEM_IDX_ALIAS)
+        .setInitialIndexName(SYSTEM_IDX_INITIAL_NAME)
         .setSettings(getSettingsBuilder().build())
         .setMappings(MAPPINGS)
         .setVersionMetaKey("version")
@@ -57,7 +61,7 @@ public class SystemIndexMetadataUpgradeServiceTests extends ESTestCase {
      */
     public void testUpgradeHiddenIndexToSystemIndex() throws Exception {
         // create an initial cluster state with a hidden index that matches the system index descriptor
-        IndexMetadata.Builder hiddenIndexMetadata = IndexMetadata.builder(SYSTEM_INDEX_NAME)
+        IndexMetadata.Builder hiddenIndexMetadata = IndexMetadata.builder(SYSTEM_IDX_INITIAL_NAME)
             .system(false)
             .settings(getSettingsBuilder().put(IndexMetadata.SETTING_INDEX_HIDDEN, true));
 
@@ -69,7 +73,7 @@ public class SystemIndexMetadataUpgradeServiceTests extends ESTestCase {
      */
     public void testHiddenSettingRemovedFromSystemIndices() throws Exception {
         // create an initial cluster state with a hidden index that matches the system index descriptor
-        IndexMetadata.Builder hiddenIndexMetadata = IndexMetadata.builder(SYSTEM_INDEX_NAME)
+        IndexMetadata.Builder hiddenIndexMetadata = IndexMetadata.builder(SYSTEM_IDX_INITIAL_NAME)
             .system(true)
             .settings(getSettingsBuilder().put(IndexMetadata.SETTING_INDEX_HIDDEN, true));
 
@@ -87,7 +91,7 @@ public class SystemIndexMetadataUpgradeServiceTests extends ESTestCase {
         // Get a metadata upgrade task and execute it on the initial cluster state
         ClusterState newState = service.getTask().execute(clusterState);
 
-        IndexMetadata result = newState.metadata().index(SYSTEM_INDEX_NAME);
+        IndexMetadata result = newState.metadata().index(SYSTEM_IDX_INITIAL_NAME);
         assertThat(result.isSystem(), equalTo(true));
         assertThat(result.getSettings().get(IndexMetadata.SETTING_INDEX_HIDDEN), equalTo("false"));
     }

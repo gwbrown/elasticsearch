@@ -20,10 +20,8 @@ import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.metadata.AliasMetadata;
-import org.elasticsearch.cluster.metadata.IndexAbstraction;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.metadata.IndexTemplateMetadata;
-import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.cluster.routing.IndexRoutingTable;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
@@ -32,9 +30,9 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.Index;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.indices.SystemIndexDescriptor;
+import org.elasticsearch.indices.SystemIndices;
 import org.elasticsearch.xpack.core.common.notifications.AbstractAuditMessage;
 import org.elasticsearch.xpack.core.ml.utils.ExceptionsHelper;
 import org.elasticsearch.xpack.core.transform.TransformField;
@@ -98,7 +96,7 @@ public final class TransformInternalIndex {
     public static SystemIndexDescriptor getSystemIndexDescriptor() throws IOException {
         return SystemIndexDescriptor.builder()
             .setIndexPattern(TransformInternalIndexConstants.INDEX_NAME_PATTERN)
-            .setAliasName(TransformInternalIndexConstants.LATEST_INDEX_NAME)
+            .setInitialIndexName(TransformInternalIndexConstants.LATEST_INDEX_NAME)
             .setDescription("Contains Transform configuration data")
             .setMappings(mappings())
             .setSettings(settings())
@@ -401,17 +399,11 @@ public final class TransformInternalIndex {
 
     protected static boolean allPrimaryShardsActiveForLatestVersionedIndex(ClusterState state) {
         IndexRoutingTable indexRouting = state.routingTable()
-            .index(resolveConcreteIndex(TransformInternalIndexConstants.LATEST_INDEX_VERSIONED_NAME, state.metadata()));
+            .index(
+                SystemIndices.resolveSystemAlias(TransformInternalIndexConstants.LATEST_INDEX_VERSIONED_NAME, state.metadata()).getIndex()
+            );
 
         return indexRouting != null && indexRouting.allPrimaryShardsActive();
-    }
-
-    private static Index resolveConcreteIndex(String indexName, Metadata metadata) {
-        final IndexAbstraction indexAbstraction = metadata.getIndicesLookup().get(indexName);
-        if (indexAbstraction == null || indexAbstraction.getWriteIndex() == null) {
-            return null;
-        }
-        return indexAbstraction.getWriteIndex().getIndex();
     }
 
     protected static boolean hasLatestAuditIndexTemplate(ClusterState state) {

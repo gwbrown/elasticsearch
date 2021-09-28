@@ -193,7 +193,7 @@ public final class DatabaseRegistry implements Closeable {
             return;
         }
 
-        IndexRoutingTable databasesIndexRT = state.getRoutingTable().index(GeoIpDownloader.DATABASES_INDEX);
+        IndexRoutingTable databasesIndexRT = state.getRoutingTable().index(GeoIpDownloader.DATABASES_INDEX_ALIAS);
         if (databasesIndexRT == null || databasesIndexRT.allPrimaryShardsActive() == false) {
             return;
         }
@@ -349,7 +349,7 @@ public final class DatabaseRegistry implements Closeable {
                 // (so that we have a consistent view of the chunk documents while doing the lookups)
                 // (the chance that the documents change is rare, given the low frequency of the updates for these databases)
                 for (int chunk = firstChunk; chunk <= lastChunk; chunk++) {
-                    SearchRequest searchRequest = new SearchRequest(GeoIpDownloader.DATABASES_INDEX);
+                    SearchRequest searchRequest = new SearchRequest(GeoIpDownloader.DATABASES_INDEX_ALIAS);
                     String id = String.format(Locale.ROOT, "%s_%d_%d", databaseName, chunk, metadata.getLastUpdate());
                     searchRequest.source().query(new TermQueryBuilder("_id", id));
 

@@ -178,7 +178,7 @@ public final class MlIndexAndAlias {
                                                     TimeValue masterNodeTimeout,
                                                     ActionListener<Boolean> finalListener) {
 
-        final String primaryIndex = descriptor.getPrimaryIndex();
+        final String primaryIndex = descriptor.getAliasName();
 
         // The check for existence of the index is against the cluster state, so very cheap
         if (hasIndex(clusterState, primaryIndex)) {

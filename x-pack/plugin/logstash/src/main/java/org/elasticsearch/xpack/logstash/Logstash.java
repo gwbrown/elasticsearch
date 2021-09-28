@@ -85,6 +85,7 @@ public class Logstash extends Plugin implements SystemIndexPlugin {
             SystemIndexDescriptor.builder()
                 .setIndexPattern(LOGSTASH_CONCRETE_INDEX_NAME)
                 .setAliasName(LOGSTASH_CONCRETE_INDEX_NAME)
+                .setInitialIndexName(LOGSTASH_CONCRETE_INDEX_NAME + "-1")
                 .setDescription("Contains data for Logstash Central Management")
                 .setMappings(getIndexMappings())
                 .setSettings(getIndexSettings())

@@ -33,7 +33,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.elasticsearch.ingest.geoip.GeoIpDownloader.DATABASES_INDEX;
+import static org.elasticsearch.ingest.geoip.GeoIpDownloader.DATABASES_INDEX_ALIAS;
 import static org.elasticsearch.ingest.geoip.GeoIpDownloader.GEOIP_DOWNLOADER;
 
 /**
@@ -139,10 +139,10 @@ public final class GeoIpDownloaderTaskExecutor extends PersistentTasksExecutor<G
             }
         });
         persistentTasksService.sendRemoveRequest(GEOIP_DOWNLOADER, ActionListener.runAfter(listener, () ->
-            client.admin().indices().prepareDelete(DATABASES_INDEX).execute(ActionListener.wrap(rr -> {
+            client.admin().indices().prepareDelete(DATABASES_INDEX_ALIAS).execute(ActionListener.wrap(rr -> {
             }, e -> {
                 if (e instanceof ResourceNotFoundException == false) {
-                    logger.warn("failed to remove " + DATABASES_INDEX, e);
+                    logger.warn("failed to remove " + DATABASES_INDEX_ALIAS, e);
                 }
             }))));
     }

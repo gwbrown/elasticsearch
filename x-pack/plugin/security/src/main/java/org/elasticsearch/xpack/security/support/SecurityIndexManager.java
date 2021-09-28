@@ -180,7 +180,7 @@ public class SecurityIndexManager implements ClusterStateListener {
         final boolean mappingIsUpToDate = indexMetadata == null || checkIndexMappingUpToDate(event.state());
         final Version mappingVersion = oldestIndexMappingVersion(event.state());
         final String concreteIndexName = indexMetadata == null
-            ? systemIndexDescriptor.getPrimaryIndex()
+            ? systemIndexDescriptor.getAliasName()
             : indexMetadata.getIndex().getName();
         final ClusterHealthStatus indexHealth;
         final IndexMetadata.State indexState;

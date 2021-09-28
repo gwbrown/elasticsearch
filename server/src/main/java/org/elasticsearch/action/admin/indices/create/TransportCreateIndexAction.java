@@ -141,7 +141,7 @@ public class TransportCreateIndexAction extends TransportMasterNodeAction<Create
 
         final CreateIndexClusterStateUpdateRequest updateRequest = new CreateIndexClusterStateUpdateRequest(
             cause,
-            descriptor.getPrimaryIndex(),
+            descriptor.getInitialIndexName(),
             request.index()
         );
 

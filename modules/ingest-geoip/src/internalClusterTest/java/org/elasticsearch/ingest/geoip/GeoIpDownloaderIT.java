@@ -222,7 +222,7 @@ public class GeoIpDownloaderIT extends AbstractGeoIpIT {
                             .from(metadata.getFirstChunk())
                             .to(metadata.getLastChunk(), true));
                     int size = metadata.getLastChunk() - metadata.getFirstChunk() + 1;
-                    SearchResponse res = client().prepareSearch(GeoIpDownloader.DATABASES_INDEX)
+                    SearchResponse res = client().prepareSearch(GeoIpDownloader.DATABASES_INDEX_ALIAS)
                         .setSize(size)
                         .setQuery(queryBuilder)
                         .addSort("chunk", SortOrder.ASC)

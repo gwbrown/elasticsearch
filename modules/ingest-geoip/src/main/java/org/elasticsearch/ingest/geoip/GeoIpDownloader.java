@@ -63,7 +63,8 @@ public class GeoIpDownloader extends AllocatedPersistentTask {
         "https://geoip.elastic.co/v1/database", Property.NodeScope);
 
     public static final String GEOIP_DOWNLOADER = "geoip-downloader";
-    static final String DATABASES_INDEX = ".geoip_databases";
+    static final String DATABASES_INDEX_ALIAS = ".geoip_databases";
+    static final String DATABASES_INITIAL_INDEX = DATABASES_INDEX_ALIAS + "-1";
     static final int MAX_CHUNK_SIZE = 1024 * 1024;
 
     private final Client client;
@@ -157,7 +158,7 @@ public class GeoIpDownloader extends AllocatedPersistentTask {
             .filter(new MatchQueryBuilder("name", name))
             .filter(new RangeQueryBuilder("chunk").to(firstChunk, false));
         DeleteByQueryRequest request = new DeleteByQueryRequest();
-        request.indices(DATABASES_INDEX);
+        request.indices(DATABASES_INDEX_ALIAS);
         request.setQuery(queryBuilder);
         client.execute(DeleteByQueryAction.INSTANCE, request, ActionListener.wrap(r -> {
         }, e -> logger.warn("could not delete old chunks for geoip database [" + name + "]", e)));
@@ -183,7 +184,7 @@ public class GeoIpDownloader extends AllocatedPersistentTask {
         MessageDigest md = MessageDigests.md5();
         for (byte[] buf = getChunk(is); buf.length != 0; buf = getChunk(is)) {
             md.update(buf);
-            IndexRequest indexRequest = new IndexRequest(DATABASES_INDEX)
+            IndexRequest indexRequest = new IndexRequest(DATABASES_INDEX_ALIAS)
                 .id(name + "_" + chunk + "_" + timestamp)
                 .create(true)
                 .source(XContentType.SMILE, "name", name, "chunk", chunk, "data", buf);
@@ -193,10 +194,10 @@ public class GeoIpDownloader extends AllocatedPersistentTask {
 
         // May take some time before automatic flush kicks in:
         // (otherwise the translog will contain large documents for some time without good reason)
-        FlushRequest flushRequest = new FlushRequest(DATABASES_INDEX);
+        FlushRequest flushRequest = new FlushRequest(DATABASES_INDEX_ALIAS);
         client.admin().indices().flush(flushRequest).actionGet();
         // Ensure that the chunk documents are visible:
-        RefreshRequest refreshRequest = new RefreshRequest(DATABASES_INDEX);
+        RefreshRequest refreshRequest = new RefreshRequest(DATABASES_INDEX_ALIAS);
         client.admin().indices().refresh(refreshRequest).actionGet();
 
         String actualMd5 = MessageDigests.toHexString(md.digest());
