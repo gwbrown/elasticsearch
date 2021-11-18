@@ -14,8 +14,10 @@ import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.allocation.AllocationService;
 import org.elasticsearch.persistent.PersistentTasksCustomMetadata;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class NodeRemovalClusterStateTaskExecutor implements ClusterStateTaskExecutor<NodeRemovalClusterStateTaskExecutor.Task> {
 
@@ -55,10 +57,12 @@ public class NodeRemovalClusterStateTaskExecutor implements ClusterStateTaskExec
     }
 
     @Override
-    public ClusterTasksResult<Task> execute(final ClusterState currentState, final List<Task> tasks) throws Exception {
+    public ClusterTasksResult<Task> execute(final ClusterState currentState, final List<TraceableTask<Task>> tasks, Tracer tracer)
+        throws Exception {
         final DiscoveryNodes.Builder remainingNodesBuilder = DiscoveryNodes.builder(currentState.nodes());
         boolean removed = false;
-        for (final Task task : tasks) {
+        for (final TraceableTask<Task> traceableTask : tasks) {
+            final Task task = traceableTask.task(); // There's not really a meaningful way to trace this, so don't
             if (currentState.nodes().nodeExists(task.node())) {
                 remainingNodesBuilder.remove(task.node());
                 removed = true;
@@ -66,17 +70,18 @@ public class NodeRemovalClusterStateTaskExecutor implements ClusterStateTaskExec
                 logger.debug("node [{}] does not exist in cluster state, ignoring", task);
             }
         }
+        List<Task> rawTasks = tasks.stream().map(TraceableTask::task).collect(Collectors.toList());
 
         if (removed == false) {
             // no nodes to remove, keep the current cluster state
-            return ClusterTasksResult.<Task>builder().successes(tasks).build(currentState);
+            return ClusterTasksResult.<Task>builder().successes(rawTasks).build(currentState);
         }
 
         final ClusterState remainingNodesClusterState = remainingNodesClusterState(currentState, remainingNodesBuilder);
         final ClusterState ptasksDisassociatedState = PersistentTasksCustomMetadata.disassociateDeadNodes(remainingNodesClusterState);
-        final ClusterState finalState = allocationService.disassociateDeadNodes(ptasksDisassociatedState, true, describeTasks(tasks));
+        final ClusterState finalState = allocationService.disassociateDeadNodes(ptasksDisassociatedState, true, describeTasks(rawTasks));
 
-        return ClusterTasksResult.<Task>builder().successes(tasks).build(finalState);
+        return ClusterTasksResult.<Task>builder().successes(rawTasks).build(finalState);
     }
 
     // visible for testing

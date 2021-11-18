@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -128,7 +129,7 @@ public class APMTracer extends AbstractLifecycleComponent implements org.elastic
         if (openTelemetry != null && tracer != null) {
             spans.computeIfAbsent(traceable.getSpanId(), spanId -> {
                 final SpanBuilder spanBuilder = tracer.spanBuilder(traceable.getSpanName());
-                Context parentContext = getParentSpanContext(openTelemetry);
+                Context parentContext = getParentSpanContext(traceable, openTelemetry);
                 if (parentContext != null) {
                     spanBuilder.setParent(parentContext);
                 }
@@ -155,15 +156,17 @@ public class APMTracer extends AbstractLifecycleComponent implements org.elastic
         }
     }
 
-    private Context getParentSpanContext(OpenTelemetry openTelemetry) {
+    private Context getParentSpanContext(Traceable traceable, OpenTelemetry openTelemetry) {
         // If we already have a non-root span context that should be the parent
         if (Context.current() != Context.root()) {
             return Context.current();
         }
 
         // If not let us check for a parent context in the thread context
-        String traceParent = threadPool.getThreadContext().getHeader(Task.TRACE_PARENT);
-        String traceState = threadPool.getThreadContext().getHeader(Task.TRACE_STATE);
+        String traceParent = Optional.ofNullable(traceable.getTraceParent())
+            .orElse(threadPool.getThreadContext().getHeader(Task.TRACE_PARENT));
+        String traceState = Optional.ofNullable(traceable.getTraceState())
+            .orElse(threadPool.getThreadContext().getHeader(Task.TRACE_STATE));
         if (traceParent != null) {
             Map<String, String> traceContextMap = new HashMap<>();
             // traceparent and tracestate should match the keys used by W3CTraceContextPropagator

@@ -755,6 +755,12 @@ public class Node implements Closeable {
             final TaskTracer taskTracer = transportService.getTaskManager().getTaskTracer();
             pluginComponents.stream().map(c -> c instanceof Tracer ? (Tracer) c : null).forEach(taskTracer::addTracer);
 
+            Tracer compoundTracer = pluginComponents.stream()
+                .filter(c -> c instanceof Tracer)
+                .map(c -> (Tracer) c)
+                .collect(Collectors.collectingAndThen(toList(), Tracer.CompoundTracer::new));
+            clusterService.getMasterService().setTracer(compoundTracer);
+
             final RecoverySettings recoverySettings = new RecoverySettings(settings, settingsModule.getClusterSettings());
             RepositoriesModule repositoriesModule = new RepositoriesModule(
                 this.environment,

@@ -30,7 +30,9 @@ public class ClusterStateTaskExecutorTests extends ESTestCase {
     }
 
     public void testDescribeTasks() {
-        final ClusterStateTaskExecutor<TestTask> executor = (currentState, tasks) -> { throw new AssertionError("should not be called"); };
+        final ClusterStateTaskExecutor<TestTask> executor = (currentState, tasks, tracer) -> {
+            throw new AssertionError("should not be called");
+        };
 
         assertThat("describes an empty list", executor.describeTasks(Collections.emptyList()), equalTo(""));
         assertThat(

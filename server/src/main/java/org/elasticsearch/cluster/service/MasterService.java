@@ -27,6 +27,7 @@ import org.elasticsearch.cluster.metadata.ProcessClusterEventTimeoutException;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.common.Priority;
+import org.elasticsearch.common.UUIDs;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.Setting;
@@ -41,11 +42,15 @@ import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.node.Node;
+import org.elasticsearch.tasks.Task;
+import org.elasticsearch.tasks.Traceable;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.threadpool.Scheduler;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -88,6 +93,7 @@ public class MasterService extends AbstractLifecycleComponent {
 
     private volatile PrioritizedEsThreadPoolExecutor threadPoolExecutor;
     private volatile Batcher taskBatcher;
+    private volatile Tracer tracer = new Tracer.NoopTracer();
 
     private final ClusterStateUpdateStatsTracker clusterStateUpdateStatsTracker = new ClusterStateUpdateStatsTracker();
 
@@ -112,6 +118,10 @@ public class MasterService extends AbstractLifecycleComponent {
 
     public synchronized void setClusterStateSupplier(java.util.function.Supplier<ClusterState> clusterStateSupplier) {
         this.clusterStateSupplier = clusterStateSupplier;
+    }
+
+    public void setTracer(Tracer tracer) {
+        this.tracer = tracer;
     }
 
     @Override
@@ -167,18 +177,27 @@ public class MasterService extends AbstractLifecycleComponent {
             runTasks(new TaskInputs(taskExecutor, updateTasks, tasksSummary));
         }
 
-        class UpdateTask extends BatchedTask {
+        class UpdateTask extends BatchedTask implements Traceable {
             final ClusterStateTaskListener listener;
+            final String traceParent;
+            final String traceState;
+
+            // Just to give the span a unique ID
+            final String id = UUIDs.base64UUID();
 
             UpdateTask(
                 Priority priority,
                 String source,
                 Object task,
                 ClusterStateTaskListener listener,
-                ClusterStateTaskExecutor<?> executor
+                ClusterStateTaskExecutor<?> executor,
+                @Nullable String traceParent,
+                @Nullable String traceState
             ) {
                 super(priority, source, executor, task);
                 this.listener = listener;
+                this.traceParent = traceParent;
+                this.traceState = traceState;
             }
 
             @Override
@@ -186,6 +205,32 @@ public class MasterService extends AbstractLifecycleComponent {
                 return ((ClusterStateTaskExecutor<Object>) batchingKey).describeTasks(
                     tasks.stream().map(BatchedTask::getTask).collect(Collectors.toList())
                 );
+            }
+
+            public String getSpanId() {
+                return this.id;
+            }
+
+            public String getSpanName() {
+                return this.source();
+            }
+
+            public Map<String, Object> getAttributes() {
+                Map<String, Object> attrs = new HashMap<>();
+                attrs.put("priority", this.priority().toString());
+                attrs.put("age_in_millis", this.getAgeInMillis());
+                attrs.put("source", this.source());
+                return attrs;
+            }
+
+            @Override
+            public String getTraceParent() {
+                return traceParent;
+            }
+
+            @Override
+            public String getTraceState() {
+                return traceState;
             }
         }
     }
@@ -824,8 +869,11 @@ public class MasterService extends AbstractLifecycleComponent {
     private ClusterTasksResult<Object> executeTasks(TaskInputs taskInputs, ClusterState previousClusterState) {
         ClusterTasksResult<Object> clusterTasksResult;
         try {
-            List<Object> inputs = taskInputs.updateTasks.stream().map(tUpdateTask -> tUpdateTask.task).collect(Collectors.toList());
-            clusterTasksResult = taskInputs.executor.execute(previousClusterState, inputs);
+            List<ClusterStateTaskExecutor.TraceableTask<Object>> inputs = taskInputs.updateTasks.stream()
+                .map(tUpdateTask -> new ClusterStateTaskExecutor.TraceableTask<>(tUpdateTask.task, tUpdateTask))
+                .collect(Collectors.toList());
+
+            clusterTasksResult = taskInputs.executor.execute(previousClusterState, inputs, tracer);
             if (previousClusterState != clusterTasksResult.resultingState
                 && previousClusterState.nodes().isLocalNodeElectedMaster()
                 && (clusterTasksResult.resultingState.nodes().isLocalNodeElectedMaster() == false)) {
@@ -924,13 +972,22 @@ public class MasterService extends AbstractLifecycleComponent {
             return;
         }
         final ThreadContext threadContext = threadPool.getThreadContext();
+
+        // We need to make sure to propagate the trace information when we stash the thread context
+        final String traceParent = threadPool.getThreadContext().getHeader(Task.TRACE_PARENT);
+        final String traceState = threadPool.getThreadContext().getHeader(Task.TRACE_STATE);
+
         final Supplier<ThreadContext.StoredContext> supplier = threadContext.newRestorableContext(true);
         try (ThreadContext.StoredContext ignore = threadContext.stashContext()) {
             threadContext.markAsSystemContext();
 
             List<Batcher.UpdateTask> safeTasks = tasks.entrySet()
                 .stream()
-                .map(e -> taskBatcher.new UpdateTask(config.priority(), source, e.getKey(), safe(e.getValue(), supplier), executor))
+                .map(
+                    e -> taskBatcher.new UpdateTask(
+                        config.priority(), source, e.getKey(), safe(e.getValue(), supplier), executor, traceParent, traceState
+                    )
+                )
                 .collect(Collectors.toList());
             taskBatcher.submitTasks(safeTasks, config.timeout());
         } catch (EsRejectedExecutionException e) {

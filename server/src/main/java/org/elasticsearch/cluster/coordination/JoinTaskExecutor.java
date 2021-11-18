@@ -22,6 +22,7 @@ import org.elasticsearch.cluster.routing.RerouteService;
 import org.elasticsearch.cluster.routing.allocation.AllocationService;
 import org.elasticsearch.common.Priority;
 import org.elasticsearch.persistent.PersistentTasksCustomMetadata;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,8 +92,12 @@ public class JoinTaskExecutor implements ClusterStateTaskExecutor<JoinTaskExecut
     }
 
     @Override
-    public ClusterTasksResult<Task> execute(ClusterState currentState, List<Task> joiningNodes) throws Exception {
+    public ClusterTasksResult<Task> execute(ClusterState currentState, List<TraceableTask<Task>> traceableJoiningNodes, Tracer tracer)
+        throws Exception {
         final ClusterTasksResult.Builder<Task> results = ClusterTasksResult.builder();
+
+        // No good ways to meaningfully break this into spans, so don't
+        final List<Task> joiningNodes = traceableJoiningNodes.stream().map(TraceableTask::task).collect(Collectors.toList());
 
         final DiscoveryNodes currentNodes = currentState.nodes();
         boolean nodesChanged = false;

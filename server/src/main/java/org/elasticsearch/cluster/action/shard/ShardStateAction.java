@@ -48,6 +48,7 @@ import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardLongFieldRange;
 import org.elasticsearch.node.NodeClosedException;
 import org.elasticsearch.tasks.Task;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.ConnectTransportException;
 import org.elasticsearch.transport.EmptyTransportResponseHandler;
@@ -368,82 +369,101 @@ public class ShardStateAction {
         }
 
         @Override
-        public ClusterTasksResult<FailedShardEntry> execute(ClusterState currentState, List<FailedShardEntry> tasks) throws Exception {
+        public ClusterTasksResult<FailedShardEntry> execute(
+            ClusterState currentState,
+            List<TraceableTask<FailedShardEntry>> tasks,
+            Tracer tracer
+        ) throws Exception {
             ClusterTasksResult.Builder<FailedShardEntry> batchResultBuilder = ClusterTasksResult.builder();
             List<FailedShardEntry> tasksToBeApplied = new ArrayList<>();
             List<FailedShard> failedShardsToBeApplied = new ArrayList<>();
             List<StaleShard> staleShardsToBeApplied = new ArrayList<>();
 
-            for (FailedShardEntry task : tasks) {
-                IndexMetadata indexMetadata = currentState.metadata().index(task.shardId.getIndex());
-                if (indexMetadata == null) {
-                    // tasks that correspond to non-existent indices are marked as successful
-                    logger.debug("{} ignoring shard failed task [{}] (unknown index {})", task.shardId, task, task.shardId.getIndex());
-                    batchResultBuilder.success(task);
-                } else {
-                    // The primary term is 0 if the shard failed itself. It is > 0 if a write was done on a primary but was failed to be
-                    // replicated to the shard copy with the provided allocation id. In case where the shard failed itself, it's ok to just
-                    // remove the corresponding routing entry from the routing table. In case where a write could not be replicated,
-                    // however, it is important to ensure that the shard copy with the missing write is considered as stale from that point
-                    // on, which is implemented by removing the allocation id of the shard copy from the in-sync allocations set.
-                    // We check here that the primary to which the write happened was not already failed in an earlier cluster state update.
-                    // This prevents situations where a new primary has already been selected and replication failures from an old stale
-                    // primary unnecessarily fail currently active shards.
-                    if (task.primaryTerm > 0) {
-                        long currentPrimaryTerm = indexMetadata.primaryTerm(task.shardId.id());
-                        if (currentPrimaryTerm != task.primaryTerm) {
-                            assert currentPrimaryTerm > task.primaryTerm
-                                : "received a primary term with a higher term than in the "
-                                    + "current cluster state (received ["
-                                    + task.primaryTerm
-                                    + "] but current is ["
-                                    + currentPrimaryTerm
-                                    + "])";
-                            logger.debug(
-                                "{} failing shard failed task [{}] (primary term {} does not match current term {})",
-                                task.shardId,
-                                task,
-                                task.primaryTerm,
-                                indexMetadata.primaryTerm(task.shardId.id())
-                            );
-                            batchResultBuilder.failure(
-                                task,
-                                new NoLongerPrimaryShardException(
-                                    task.shardId,
-                                    "primary term ["
-                                        + task.primaryTerm
-                                        + "] did not match current primary term ["
-                                        + currentPrimaryTerm
-                                        + "]"
-                                )
-                            );
-                            continue;
-                        }
-                    }
-
-                    ShardRouting matched = currentState.getRoutingTable().getByAllocationId(task.shardId, task.allocationId);
-                    if (matched == null) {
-                        Set<String> inSyncAllocationIds = indexMetadata.inSyncAllocationIds(task.shardId.id());
-                        // mark shard copies without routing entries that are in in-sync allocations set only as stale if the reason why
-                        // they were failed is because a write made it into the primary but not to this copy (which corresponds to
-                        // the check "primaryTerm > 0").
-                        if (task.primaryTerm > 0 && inSyncAllocationIds.contains(task.allocationId)) {
-                            logger.debug("{} marking shard {} as stale (shard failed task: [{}])", task.shardId, task.allocationId, task);
-                            tasksToBeApplied.add(task);
-                            staleShardsToBeApplied.add(new StaleShard(task.shardId, task.allocationId));
-                        } else {
-                            // tasks that correspond to non-existent shards are marked as successful
-                            logger.debug("{} ignoring shard failed task [{}] (shard does not exist anymore)", task.shardId, task);
-                            batchResultBuilder.success(task);
-                        }
+            for (TraceableTask<FailedShardEntry> traceableTask : tasks) {
+                try {
+                    FailedShardEntry task = traceableTask.task();
+                    tracer.onTraceStarted(traceableTask);
+                    IndexMetadata indexMetadata = currentState.metadata().index(task.shardId.getIndex());
+                    if (indexMetadata == null) {
+                        // tasks that correspond to non-existent indices are marked as successful
+                        logger.debug("{} ignoring shard failed task [{}] (unknown index {})", task.shardId, task, task.shardId.getIndex());
+                        batchResultBuilder.success(task);
                     } else {
-                        // failing a shard also possibly marks it as stale (see IndexMetadataUpdater)
-                        logger.debug("{} failing shard {} (shard failed task: [{}])", task.shardId, matched, task);
-                        tasksToBeApplied.add(task);
-                        failedShardsToBeApplied.add(new FailedShard(matched, task.message, task.failure, task.markAsStale));
+                        // The primary term is 0 if the shard failed itself. It is > 0 if a write was done on a primary but was failed to be
+                        // replicated to the shard copy with the provided allocation id. In case where the shard failed itself, it's ok to
+                        // just
+                        // remove the corresponding routing entry from the routing table. In case where a write could not be replicated,
+                        // however, it is important to ensure that the shard copy with the missing write is considered as stale from that
+                        // point
+                        // on, which is implemented by removing the allocation id of the shard copy from the in-sync allocations set.
+                        // We check here that the primary to which the write happened was not already failed in an earlier cluster state
+                        // update.
+                        // This prevents situations where a new primary has already been selected and replication failures from an old stale
+                        // primary unnecessarily fail currently active shards.
+                        if (task.primaryTerm > 0) {
+                            long currentPrimaryTerm = indexMetadata.primaryTerm(task.shardId.id());
+                            if (currentPrimaryTerm != task.primaryTerm) {
+                                assert currentPrimaryTerm > task.primaryTerm
+                                    : "received a primary term with a higher term than in the "
+                                        + "current cluster state (received ["
+                                        + task.primaryTerm
+                                        + "] but current is ["
+                                        + currentPrimaryTerm
+                                        + "])";
+                                logger.debug(
+                                    "{} failing shard failed task [{}] (primary term {} does not match current term {})",
+                                    task.shardId,
+                                    task,
+                                    task.primaryTerm,
+                                    indexMetadata.primaryTerm(task.shardId.id())
+                                );
+                                batchResultBuilder.failure(
+                                    task,
+                                    new NoLongerPrimaryShardException(
+                                        task.shardId,
+                                        "primary term ["
+                                            + task.primaryTerm
+                                            + "] did not match current primary term ["
+                                            + currentPrimaryTerm
+                                            + "]"
+                                    )
+                                );
+                                continue;
+                            }
+                        }
+
+                        ShardRouting matched = currentState.getRoutingTable().getByAllocationId(task.shardId, task.allocationId);
+                        if (matched == null) {
+                            Set<String> inSyncAllocationIds = indexMetadata.inSyncAllocationIds(task.shardId.id());
+                            // mark shard copies without routing entries that are in in-sync allocations set only as stale if the reason why
+                            // they were failed is because a write made it into the primary but not to this copy (which corresponds to
+                            // the check "primaryTerm > 0").
+                            if (task.primaryTerm > 0 && inSyncAllocationIds.contains(task.allocationId)) {
+                                logger.debug(
+                                    "{} marking shard {} as stale (shard failed task: [{}])",
+                                    task.shardId,
+                                    task.allocationId,
+                                    task
+                                );
+                                tasksToBeApplied.add(task);
+                                staleShardsToBeApplied.add(new StaleShard(task.shardId, task.allocationId));
+                            } else {
+                                // tasks that correspond to non-existent shards are marked as successful
+                                logger.debug("{} ignoring shard failed task [{}] (shard does not exist anymore)", task.shardId, task);
+                                batchResultBuilder.success(task);
+                            }
+                        } else {
+                            // failing a shard also possibly marks it as stale (see IndexMetadataUpdater)
+                            logger.debug("{} failing shard {} (shard failed task: [{}])", task.shardId, matched, task);
+                            tasksToBeApplied.add(task);
+                            failedShardsToBeApplied.add(new FailedShard(matched, task.message, task.failure, task.markAsStale));
+                        }
                     }
+                } finally {
+                    tracer.onTraceStopped(traceableTask);
                 }
             }
+
             assert tasksToBeApplied.size() == failedShardsToBeApplied.size() + staleShardsToBeApplied.size();
 
             ClusterState maybeUpdatedState = currentState;
@@ -644,89 +664,99 @@ public class ShardStateAction {
         }
 
         @Override
-        public ClusterTasksResult<StartedShardEntry> execute(ClusterState currentState, List<StartedShardEntry> tasks) throws Exception {
+        public ClusterTasksResult<StartedShardEntry> execute(
+            ClusterState currentState,
+            List<TraceableTask<StartedShardEntry>> tasks,
+            Tracer tracer
+        ) throws Exception {
             ClusterTasksResult.Builder<StartedShardEntry> builder = ClusterTasksResult.builder();
             List<StartedShardEntry> tasksToBeApplied = new ArrayList<>();
             List<ShardRouting> shardRoutingsToBeApplied = new ArrayList<>(tasks.size());
             Set<ShardRouting> seenShardRoutings = new HashSet<>(); // to prevent duplicates
             final Map<Index, IndexLongFieldRange> updatedTimestampRanges = new HashMap<>();
-            for (StartedShardEntry task : tasks) {
-                final ShardRouting matched = currentState.getRoutingTable().getByAllocationId(task.shardId, task.allocationId);
-                if (matched == null) {
-                    // tasks that correspond to non-existent shards are marked as successful. The reason is that we resend shard started
-                    // events on every cluster state publishing that does not contain the shard as started yet. This means that old stale
-                    // requests might still be in flight even after the shard has already been started or failed on the master. We just
-                    // ignore these requests for now.
-                    logger.debug("{} ignoring shard started task [{}] (shard does not exist anymore)", task.shardId, task);
-                    builder.success(task);
-                } else {
-                    if (matched.primary() && task.primaryTerm > 0) {
-                        final IndexMetadata indexMetadata = currentState.metadata().index(task.shardId.getIndex());
-                        assert indexMetadata != null;
-                        final long currentPrimaryTerm = indexMetadata.primaryTerm(task.shardId.id());
-                        if (currentPrimaryTerm != task.primaryTerm) {
-                            assert currentPrimaryTerm > task.primaryTerm
-                                : "received a primary term with a higher term than in the "
-                                    + "current cluster state (received ["
-                                    + task.primaryTerm
-                                    + "] but current is ["
-                                    + currentPrimaryTerm
-                                    + "])";
-                            logger.debug(
-                                "{} ignoring shard started task [{}] (primary term {} does not match current term {})",
-                                task.shardId,
-                                task,
-                                task.primaryTerm,
-                                currentPrimaryTerm
-                            );
-                            builder.success(task);
-                            continue;
-                        }
-                    }
-                    if (matched.initializing() == false) {
-                        assert matched.active() : "expected active shard routing for task " + task + " but found " + matched;
-                        // same as above, this might have been a stale in-flight request, so we just ignore.
-                        logger.debug(
-                            "{} ignoring shard started task [{}] (shard exists but is not initializing: {})",
-                            task.shardId,
-                            task,
-                            matched
-                        );
+            for (TraceableTask<StartedShardEntry> traceableTask : tasks) {
+                StartedShardEntry task = traceableTask.task();
+                tracer.onTraceStarted(traceableTask);
+                try {
+                    final ShardRouting matched = currentState.getRoutingTable().getByAllocationId(task.shardId, task.allocationId);
+                    if (matched == null) {
+                        // tasks that correspond to non-existent shards are marked as successful. The reason is that we resend shard started
+                        // events on every cluster state publishing that does not contain the shard as started yet. This means that old
+                        // stale requests might still be in flight even after the shard has already been started or failed on the master. We
+                        // just ignore these requests for now.
+                        logger.debug("{} ignoring shard started task [{}] (shard does not exist anymore)", task.shardId, task);
                         builder.success(task);
                     } else {
-                        // remove duplicate actions as allocation service expects a clean list without duplicates
-                        if (seenShardRoutings.contains(matched)) {
-                            logger.trace(
-                                "{} ignoring shard started task [{}] (already scheduled to start {})",
+                        if (matched.primary() && task.primaryTerm > 0) {
+                            final IndexMetadata indexMetadata = currentState.metadata().index(task.shardId.getIndex());
+                            assert indexMetadata != null;
+                            final long currentPrimaryTerm = indexMetadata.primaryTerm(task.shardId.id());
+                            if (currentPrimaryTerm != task.primaryTerm) {
+                                assert currentPrimaryTerm > task.primaryTerm
+                                    : "received a primary term with a higher term than in the "
+                                        + "current cluster state (received ["
+                                        + task.primaryTerm
+                                        + "] but current is ["
+                                        + currentPrimaryTerm
+                                        + "])";
+                                logger.debug(
+                                    "{} ignoring shard started task [{}] (primary term {} does not match current term {})",
+                                    task.shardId,
+                                    task,
+                                    task.primaryTerm,
+                                    currentPrimaryTerm
+                                );
+                                builder.success(task);
+                                continue;
+                            }
+                        }
+                        if (matched.initializing() == false) {
+                            assert matched.active() : "expected active shard routing for task " + task + " but found " + matched;
+                            // same as above, this might have been a stale in-flight request, so we just ignore.
+                            logger.debug(
+                                "{} ignoring shard started task [{}] (shard exists but is not initializing: {})",
                                 task.shardId,
                                 task,
                                 matched
                             );
-                            tasksToBeApplied.add(task);
+                            builder.success(task);
                         } else {
-                            logger.debug("{} starting shard {} (shard started task: [{}])", task.shardId, matched, task);
-                            tasksToBeApplied.add(task);
-                            shardRoutingsToBeApplied.add(matched);
-                            seenShardRoutings.add(matched);
+                            // remove duplicate actions as allocation service expects a clean list without duplicates
+                            if (seenShardRoutings.contains(matched)) {
+                                logger.trace(
+                                    "{} ignoring shard started task [{}] (already scheduled to start {})",
+                                    task.shardId,
+                                    task,
+                                    matched
+                                );
+                                tasksToBeApplied.add(task);
+                            } else {
+                                logger.debug("{} starting shard {} (shard started task: [{}])", task.shardId, matched, task);
+                                tasksToBeApplied.add(task);
+                                shardRoutingsToBeApplied.add(matched);
+                                seenShardRoutings.add(matched);
 
-                            // expand the timestamp range recorded in the index metadata if needed
-                            final Index index = task.shardId.getIndex();
-                            IndexLongFieldRange currentTimestampMillisRange = updatedTimestampRanges.get(index);
-                            final IndexMetadata indexMetadata = currentState.metadata().index(index);
-                            if (currentTimestampMillisRange == null) {
-                                currentTimestampMillisRange = indexMetadata.getTimestampRange();
-                            }
-                            final IndexLongFieldRange newTimestampMillisRange;
-                            newTimestampMillisRange = currentTimestampMillisRange.extendWithShardRange(
-                                task.shardId.id(),
-                                indexMetadata.getNumberOfShards(),
-                                task.timestampRange
-                            );
-                            if (newTimestampMillisRange != currentTimestampMillisRange) {
-                                updatedTimestampRanges.put(index, newTimestampMillisRange);
+                                // expand the timestamp range recorded in the index metadata if needed
+                                final Index index = task.shardId.getIndex();
+                                IndexLongFieldRange currentTimestampMillisRange = updatedTimestampRanges.get(index);
+                                final IndexMetadata indexMetadata = currentState.metadata().index(index);
+                                if (currentTimestampMillisRange == null) {
+                                    currentTimestampMillisRange = indexMetadata.getTimestampRange();
+                                }
+                                final IndexLongFieldRange newTimestampMillisRange;
+                                newTimestampMillisRange = currentTimestampMillisRange.extendWithShardRange(
+                                    task.shardId.id(),
+                                    indexMetadata.getNumberOfShards(),
+                                    task.timestampRange
+                                );
+                                if (newTimestampMillisRange != currentTimestampMillisRange) {
+                                    updatedTimestampRanges.put(index, newTimestampMillisRange);
+                                }
                             }
                         }
                     }
+                } finally {
+                    tracer.onTraceStopped(traceableTask);
                 }
             }
             assert tasksToBeApplied.size() >= shardRoutingsToBeApplied.size();

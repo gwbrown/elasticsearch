@@ -37,6 +37,7 @@ import org.elasticsearch.common.util.set.Sets;
 import org.elasticsearch.core.Tuple;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -88,7 +89,11 @@ public class ShardFailedClusterStateTaskExecutorTests extends ESAllocationTestCa
 
     public void testEmptyTaskListProducesSameClusterState() throws Exception {
         List<ShardStateAction.FailedShardEntry> tasks = Collections.emptyList();
-        ClusterStateTaskExecutor.ClusterTasksResult<ShardStateAction.FailedShardEntry> result = executor.execute(clusterState, tasks);
+        ClusterStateTaskExecutor.ClusterTasksResult<ShardStateAction.FailedShardEntry> result = executor.execute(
+            clusterState,
+            tasks.stream().map(task -> new ClusterStateTaskExecutor.TraceableTask<>(task, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        );
         assertTasksSuccessful(tasks, result, clusterState, false);
     }
 
@@ -96,7 +101,11 @@ public class ShardFailedClusterStateTaskExecutorTests extends ESAllocationTestCa
         String reason = "test duplicate failures are okay";
         ClusterState currentState = createClusterStateWithStartedShards(reason);
         List<FailedShardEntry> tasks = createExistingShards(currentState, reason);
-        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = executor.execute(currentState, tasks);
+        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = executor.execute(
+            currentState,
+            tasks.stream().map(task -> new ClusterStateTaskExecutor.TraceableTask<>(task, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        );
         assertTasksSuccessful(tasks, result, clusterState, true);
     }
 
@@ -104,7 +113,11 @@ public class ShardFailedClusterStateTaskExecutorTests extends ESAllocationTestCa
         String reason = "test non existent shards are marked as successful";
         ClusterState currentState = createClusterStateWithStartedShards(reason);
         List<FailedShardEntry> tasks = createNonExistentShards(currentState, reason);
-        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = executor.execute(clusterState, tasks);
+        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = executor.execute(
+            clusterState,
+            tasks.stream().map(task -> new ClusterStateTaskExecutor.TraceableTask<>(task, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        );
         assertTasksSuccessful(tasks, result, clusterState, false);
     }
 
@@ -126,7 +139,11 @@ public class ShardFailedClusterStateTaskExecutorTests extends ESAllocationTestCa
         List<FailedShardEntry> tasks = new ArrayList<>();
         tasks.addAll(failingTasks);
         tasks.addAll(nonExistentTasks);
-        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = failingExecutor.execute(currentState, tasks);
+        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = failingExecutor.execute(
+            currentState,
+            tasks.stream().map(task -> new ClusterStateTaskExecutor.TraceableTask<>(task, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        );
         List<Tuple<FailedShardEntry, ClusterStateTaskExecutor.TaskResult>> taskResultList = new ArrayList<>();
         for (FailedShardEntry failingTask : failingTasks) {
             taskResultList.add(
@@ -177,7 +194,11 @@ public class ShardFailedClusterStateTaskExecutorTests extends ESAllocationTestCa
                 )
             )
             .collect(Collectors.toList());
-        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = executor.execute(currentState, tasks);
+        ClusterStateTaskExecutor.ClusterTasksResult<FailedShardEntry> result = executor.execute(
+            currentState,
+            tasks.stream().map(task -> new ClusterStateTaskExecutor.TraceableTask<>(task, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        );
         assertTaskResults(taskResultList, result, currentState, false);
     }
 
@@ -197,7 +218,11 @@ public class ShardFailedClusterStateTaskExecutorTests extends ESAllocationTestCa
                 null,
                 false
             );
-            ClusterState appliedState = executor.execute(clusterState, Collections.singletonList(failShardOnly)).resultingState;
+            ClusterState appliedState = executor.execute(
+                clusterState,
+                Collections.singletonList(new ClusterStateTaskExecutor.TraceableTask<>(failShardOnly, null)),
+                new Tracer.NoopTracer()
+            ).resultingState;
             Set<String> newInSync = appliedState.metadata().index(INDEX).inSyncAllocationIds(0);
             assertThat(newInSync, equalTo(oldInSync));
         }
@@ -211,7 +236,11 @@ public class ShardFailedClusterStateTaskExecutorTests extends ESAllocationTestCa
                 null,
                 true
             );
-            ClusterState appliedState = executor.execute(clusterState, Collections.singletonList(failAndMarkAsStale)).resultingState;
+            ClusterState appliedState = executor.execute(
+                clusterState,
+                Collections.singletonList(new ClusterStateTaskExecutor.TraceableTask<>(failAndMarkAsStale, null)),
+                new Tracer.NoopTracer()
+            ).resultingState;
             Set<String> newInSync = appliedState.metadata().index(INDEX).inSyncAllocationIds(0);
             assertThat(Sets.difference(oldInSync, newInSync), contains(failedAllocationId));
         }

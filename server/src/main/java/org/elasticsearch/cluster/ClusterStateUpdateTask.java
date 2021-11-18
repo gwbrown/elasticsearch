@@ -11,8 +11,10 @@ package org.elasticsearch.cluster;
 import org.elasticsearch.common.Priority;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A task that can update the cluster state.
@@ -46,10 +48,22 @@ public abstract class ClusterStateUpdateTask
     }
 
     @Override
-    public final ClusterTasksResult<ClusterStateUpdateTask> execute(ClusterState currentState, List<ClusterStateUpdateTask> tasks)
-        throws Exception {
-        ClusterState result = execute(currentState);
-        return ClusterTasksResult.<ClusterStateUpdateTask>builder().successes(tasks).build(result);
+    public final ClusterTasksResult<ClusterStateUpdateTask> execute(
+        ClusterState currentState,
+        List<TraceableTask<ClusterStateUpdateTask>> tasks,
+        Tracer tracer
+    ) throws Exception {
+        assert tasks.size() == 1 && tasks.get(0).task() == this
+            : "expected one-element task list containing current object but was " + tasks;
+        try {
+            tracer.onTraceStarted(tasks.get(0));
+            ClusterState result = execute(currentState);
+            return ClusterTasksResult.<ClusterStateUpdateTask>builder()
+                .successes(tasks.stream().map(TraceableTask::task).collect(Collectors.toList()))
+                .build(result);
+        } finally {
+            tracer.onTraceStopped(tasks.get(0));
+        }
     }
 
     @Override

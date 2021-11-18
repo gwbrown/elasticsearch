@@ -7,6 +7,8 @@
  */
 package org.elasticsearch.cluster;
 
+import org.elasticsearch.tasks.Tracer;
+
 import java.util.List;
 
 public interface ClusterStateTaskListener {
@@ -32,7 +34,7 @@ public interface ClusterStateTaskListener {
     }
 
     /**
-     * Called when the result of the {@link ClusterStateTaskExecutor#execute(ClusterState, List)} have been processed
+     * Called when the result of the {@link ClusterStateTaskExecutor#execute(ClusterState, List, Tracer)} have been processed
      * properly by all listeners.
      *
      * Implementations of this callback must not throw exceptions: an exception thrown here is logged by the master service at {@code ERROR}

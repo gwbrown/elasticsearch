@@ -9,17 +9,20 @@ package org.elasticsearch.cluster;
 
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.core.Nullable;
+import org.elasticsearch.tasks.Traceable;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public interface ClusterStateTaskExecutor<T> {
     /**
      * Update the cluster state based on the current state and the given tasks. Return the *same instance* if no state
      * should be changed.
      */
-    ClusterTasksResult<T> execute(ClusterState currentState, List<T> tasks) throws Exception;
+    ClusterTasksResult<T> execute(ClusterState currentState, List<TraceableTask<T>> tasks, Tracer tracer) throws Exception;
 
     /**
      * indicates whether this executor should only run if the current node is master
@@ -41,7 +44,7 @@ public interface ClusterStateTaskExecutor<T> {
     /**
      * Builds a concise description of a list of tasks (to be used in logging etc.).
      *
-     * Note that the tasks given are not necessarily the same as those that will be passed to {@link #execute(ClusterState, List)}.
+     * Note that the tasks given are not necessarily the same as those that will be passed to {@link #execute(ClusterState, List, Tracer)}.
      * but are guaranteed to be a subset of them. This method can be called multiple times with different lists before execution.
      * This allows groupd task description but the submitting source.
      */
@@ -146,6 +149,54 @@ public interface ClusterStateTaskExecutor<T> {
         public Exception getFailure() {
             assert isSuccess() == false;
             return failure;
+        }
+    }
+
+    class TraceableTask<T> implements Traceable {
+        private final T item;
+        private final Traceable traceable;
+
+        public TraceableTask(T item, Traceable traceable) {
+            this.item = item;
+            this.traceable = traceable;
+        }
+
+        public void processTask(Tracer tracer, Consumer<T> taskProcessor) {
+            try {
+                tracer.onTraceStopped(traceable);
+                taskProcessor.accept(item);
+            } finally {
+                tracer.onTraceStopped(traceable);
+            }
+        }
+
+        public T task() {
+            return item;
+        }
+
+        @Override
+        public String getSpanId() {
+            return traceable.getSpanId();
+        }
+
+        @Override
+        public String getSpanName() {
+            return traceable.getSpanName();
+        }
+
+        @Override
+        public Map<String, Object> getAttributes() {
+            return traceable.getAttributes();
+        }
+
+        @Override
+        public String getTraceParent() {
+            return traceable.getTraceParent();
+        }
+
+        @Override
+        public String getTraceState() {
+            return traceable.getTraceState();
         }
     }
 }

@@ -8,6 +8,8 @@
 
 package org.elasticsearch.tasks;
 
+import org.elasticsearch.core.Nullable;
+
 import java.util.Map;
 
 public interface Traceable {
@@ -16,4 +18,14 @@ public interface Traceable {
     String getSpanName();
 
     Map<String, Object> getAttributes();
+
+    @Nullable
+    default String getTraceParent() {
+        return null;
+    }
+
+    @Nullable
+    default String getTraceState() {
+        return null;
+    }
 }

@@ -39,6 +39,7 @@ import org.elasticsearch.core.Nullable;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.core.Tuple;
 import org.elasticsearch.node.Node;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.test.ClusterServiceUtils;
 import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.test.MockLogAppender;
@@ -67,6 +68,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
@@ -270,9 +272,11 @@ public class MasterServiceTests extends ESTestCase {
                 ClusterStateTaskConfig.build(Priority.NORMAL),
                 new ClusterStateTaskExecutor<Object>() {
                     @Override
-                    public ClusterTasksResult<Object> execute(ClusterState currentState, List<Object> tasks) {
+                    public ClusterTasksResult<Object> execute(ClusterState currentState, List<TraceableTask<Object>> tasks, Tracer tracer) {
                         ClusterState newClusterState = ClusterState.builder(currentState).build();
-                        return ClusterTasksResult.builder().successes(tasks).build(newClusterState);
+                        return ClusterTasksResult.builder()
+                            .successes(tasks.stream().map(TraceableTask::task).collect(Collectors.toList()))
+                            .build(newClusterState);
                     }
 
                     @Override
@@ -522,7 +526,8 @@ public class MasterServiceTests extends ESTestCase {
             }
 
             @Override
-            public ClusterTasksResult<Task> execute(ClusterState currentState, List<Task> tasks) throws Exception {
+            public ClusterTasksResult<Task> execute(ClusterState currentState, List<TraceableTask<Task>> tasks, Tracer tracer)
+                throws Exception {
                 for (Set<Task> expectedSet : taskGroups) {
                     long count = tasks.stream().filter(expectedSet::contains).count();
                     assertThat(
@@ -531,7 +536,7 @@ public class MasterServiceTests extends ESTestCase {
                         anyOf(equalTo(0L), equalTo((long) expectedSet.size()))
                     );
                 }
-                tasks.forEach(Task::execute);
+                tasks.forEach(task -> task.processTask(tracer, Task::execute));
                 counter.addAndGet(tasks.size());
                 ClusterState maybeUpdatedClusterState = currentState;
                 if (randomBoolean()) {
@@ -539,7 +544,9 @@ public class MasterServiceTests extends ESTestCase {
                     batches.incrementAndGet();
                     semaphore.acquire();
                 }
-                return ClusterTasksResult.<Task>builder().successes(tasks).build(maybeUpdatedClusterState);
+                return ClusterTasksResult.<Task>builder()
+                    .successes(tasks.stream().map(TraceableTask::task).collect(Collectors.toList()))
+                    .build(maybeUpdatedClusterState);
             }
 
             @Override
@@ -677,9 +684,11 @@ public class MasterServiceTests extends ESTestCase {
                 "testBlockingCallInClusterStateTaskListenerFails",
                 new Object(),
                 ClusterStateTaskConfig.build(Priority.NORMAL),
-                (currentState, tasks) -> {
+                (currentState, tasks, tracer) -> {
                     ClusterState newClusterState = ClusterState.builder(currentState).build();
-                    return ClusterStateTaskExecutor.ClusterTasksResult.builder().successes(tasks).build(newClusterState);
+                    return ClusterStateTaskExecutor.ClusterTasksResult.builder()
+                        .successes(tasks.stream().map(ClusterStateTaskExecutor.TraceableTask::task).collect(Collectors.toList()))
+                        .build(newClusterState);
                 },
                 new ClusterStateTaskListener() {
                     @Override

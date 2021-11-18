@@ -19,6 +19,7 @@ import org.elasticsearch.cluster.routing.RerouteService;
 import org.elasticsearch.cluster.routing.allocation.AllocationService;
 import org.elasticsearch.common.UUIDs;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.test.VersionUtils;
 
@@ -159,7 +160,8 @@ public class JoinTaskExecutorTests extends ESTestCase {
 
         final ClusterStateTaskExecutor.ClusterTasksResult<JoinTaskExecutor.Task> result = joinTaskExecutor.execute(
             clusterState,
-            List.of(new JoinTaskExecutor.Task(actualNode, "test"))
+            List.of(new ClusterStateTaskExecutor.TraceableTask<>(new JoinTaskExecutor.Task(actualNode, "test"), null)),
+            new Tracer.NoopTracer()
         );
         assertThat(result.executionResults.entrySet(), hasSize(1));
         final ClusterStateTaskExecutor.TaskResult taskResult = result.executionResults.values().iterator().next();

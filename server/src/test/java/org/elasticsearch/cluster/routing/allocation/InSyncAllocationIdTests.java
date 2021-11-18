@@ -10,6 +10,7 @@ package org.elasticsearch.cluster.routing.allocation;
 
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.ClusterStateTaskExecutor;
 import org.elasticsearch.cluster.ESAllocationTestCase;
 import org.elasticsearch.cluster.action.shard.ShardStateAction;
 import org.elasticsearch.cluster.action.shard.ShardStateAction.FailedShardEntry;
@@ -23,6 +24,7 @@ import org.elasticsearch.cluster.routing.allocation.command.AllocateEmptyPrimary
 import org.elasticsearch.cluster.routing.allocation.command.AllocationCommands;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.set.Sets;
+import org.elasticsearch.tasks.Tracer;
 import org.junit.Before;
 
 import java.util.ArrayList;
@@ -31,6 +33,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.elasticsearch.cluster.routing.RoutingNodesHelper.shardsWithState;
 import static org.elasticsearch.cluster.routing.ShardRoutingState.STARTED;
@@ -165,8 +168,19 @@ public class InSyncAllocationIdTests extends ESAllocationTestCase {
         clusterState = failedClusterStateTaskExecutor.execute(
             clusterState,
             Arrays.asList(
-                new FailedShardEntry(shardRoutingTable.shardId(), replicaShard.allocationId().getId(), primaryTerm, "dummy", null, true)
-            )
+                new ClusterStateTaskExecutor.TraceableTask<>(
+                    new FailedShardEntry(
+                        shardRoutingTable.shardId(),
+                        replicaShard.allocationId().getId(),
+                        primaryTerm,
+                        "dummy",
+                        null,
+                        true
+                    ),
+                    null
+                )
+            ),
+            new Tracer.NoopTracer()
         ).resultingState;
 
         assertThat(clusterState.metadata().index("test").inSyncAllocationIds(0).size(), equalTo(1));
@@ -196,7 +210,11 @@ public class InSyncAllocationIdTests extends ESAllocationTestCase {
         Collections.shuffle(failureEntries, random());
         logger.info("Failing {}", failureEntries);
 
-        clusterState = failedClusterStateTaskExecutor.execute(clusterState, failureEntries).resultingState;
+        clusterState = failedClusterStateTaskExecutor.execute(
+            clusterState,
+            failureEntries.stream().map(entry -> new ClusterStateTaskExecutor.TraceableTask<>(entry, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        ).resultingState;
 
         assertThat(
             clusterState.metadata().index("test").inSyncAllocationIds(0),
@@ -204,7 +222,11 @@ public class InSyncAllocationIdTests extends ESAllocationTestCase {
         );
 
         // resend shard failures to check if they are ignored
-        clusterState = failedClusterStateTaskExecutor.execute(clusterState, failureEntries).resultingState;
+        clusterState = failedClusterStateTaskExecutor.execute(
+            clusterState,
+            failureEntries.stream().map(entry -> new ClusterStateTaskExecutor.TraceableTask<>(entry, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        ).resultingState;
 
         assertThat(
             clusterState.metadata().index("test").inSyncAllocationIds(0),
@@ -339,8 +361,12 @@ public class InSyncAllocationIdTests extends ESAllocationTestCase {
         clusterState = failedClusterStateTaskExecutor.execute(
             clusterState,
             Collections.singletonList(
-                new FailedShardEntry(shardRoutingTable.shardId(), primaryShard.allocationId().getId(), 0L, "dummy", null, true)
-            )
+                new ClusterStateTaskExecutor.TraceableTask<>(
+                    new FailedShardEntry(shardRoutingTable.shardId(), primaryShard.allocationId().getId(), 0L, "dummy", null, true),
+                    null
+                )
+            ),
+            new Tracer.NoopTracer()
         ).resultingState;
 
         assertThat(clusterState.routingTable().index("test").shard(0).assignedShards().size(), equalTo(0));

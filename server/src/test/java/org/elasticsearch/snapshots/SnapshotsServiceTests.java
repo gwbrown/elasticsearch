@@ -10,6 +10,7 @@ package org.elasticsearch.snapshots;
 
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.ClusterStateTaskExecutor;
 import org.elasticsearch.cluster.SnapshotsInProgress;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.metadata.Metadata;
@@ -29,6 +30,7 @@ import org.elasticsearch.repositories.IndexId;
 import org.elasticsearch.repositories.RepositoryShardId;
 import org.elasticsearch.repositories.ShardGeneration;
 import org.elasticsearch.repositories.ShardSnapshotResult;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.test.ESTestCase;
 
 import java.util.Arrays;
@@ -482,7 +484,14 @@ public class SnapshotsServiceTests extends ESTestCase {
     }
 
     private static ClusterState applyUpdates(ClusterState state, SnapshotsService.ShardSnapshotUpdate... updates) throws Exception {
-        return SnapshotsService.SHARD_STATE_EXECUTOR.execute(state, Arrays.asList(updates)).resultingState;
+        return SnapshotsService.SHARD_STATE_EXECUTOR.execute(
+            state,
+            Arrays.asList(updates)
+                .stream()
+                .map(entry -> new ClusterStateTaskExecutor.TraceableTask<>(entry, null))
+                .collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        ).resultingState;
     }
 
     private static SnapshotsInProgress.Entry snapshotEntry(

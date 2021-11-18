@@ -40,6 +40,7 @@ import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.index.shard.DocsStats;
 import org.elasticsearch.tasks.Task;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
@@ -360,23 +361,33 @@ public class TransportRolloverAction extends TransportMasterNodeAction<RolloverR
         }
 
         @Override
-        public ClusterTasksResult<RolloverTask> execute(ClusterState currentState, List<RolloverTask> tasks) throws Exception {
+        public ClusterTasksResult<RolloverTask> execute(ClusterState currentState, List<TraceableTask<RolloverTask>> tasks, Tracer tracer)
+            throws Exception {
             ClusterStateTaskExecutor.ClusterTasksResult.Builder<RolloverTask> builder = ClusterStateTaskExecutor.ClusterTasksResult
                 .builder();
             ClusterState state = currentState;
-            for (RolloverTask task : tasks) {
+            for (TraceableTask<RolloverTask> traceableTask : tasks) {
                 try {
-                    state = task.performRollover(state);
-                    builder.success(task);
-                } catch (Exception e) {
-                    builder.failure(task, e);
+                    RolloverTask task = traceableTask.task();
+                    tracer.onTraceStopped(traceableTask);
+                    try {
+                        state = task.performRollover(state);
+                        builder.success(task);
+                    } catch (Exception e) {
+                        builder.failure(task, e);
+                    }
+                } finally {
+                    tracer.onTraceStopped(traceableTask);
                 }
             }
 
             if (state != currentState) {
                 var reason = new StringBuilder();
                 Strings.collectionToDelimitedStringWithLimit(
-                    (Iterable<String>) () -> tasks.stream().map(t -> t.sourceIndex.get() + "->" + t.rolloverIndex.get()).iterator(),
+                    (Iterable<String>) () -> tasks.stream()
+                        .map(TraceableTask::task)
+                        .map(t -> t.sourceIndex.get() + "->" + t.rolloverIndex.get())
+                        .iterator(),
                     ",",
                     "bulk rollover [",
                     "]",

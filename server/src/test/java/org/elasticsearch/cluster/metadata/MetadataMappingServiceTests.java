@@ -16,6 +16,7 @@ import org.elasticsearch.common.compress.CompressedXContent;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.plugins.Plugin;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.test.ESSingleNodeTestCase;
 import org.elasticsearch.test.InternalSettingsPlugin;
 
@@ -44,7 +45,11 @@ public class MetadataMappingServiceTests extends ESSingleNodeTestCase {
         );
         request.indices(new Index[] { indexService.index() });
         final ClusterStateTaskExecutor.ClusterTasksResult<PutMappingClusterStateUpdateRequest> result = mappingService.putMappingExecutor
-            .execute(clusterService.state(), Collections.singletonList(request));
+            .execute(
+                clusterService.state(),
+                Collections.singletonList(new ClusterStateTaskExecutor.TraceableTask<>(request, null)),
+                new Tracer.NoopTracer()
+            );
         // the task completed successfully
         assertThat(result.executionResults.size(), equalTo(1));
         assertTrue(result.executionResults.values().iterator().next().isSuccess());
@@ -67,12 +72,17 @@ public class MetadataMappingServiceTests extends ESSingleNodeTestCase {
         );
         ClusterState result = mappingService.putMappingExecutor.execute(
             clusterService.state(),
-            Collections.singletonList(request)
+            Collections.singletonList(new ClusterStateTaskExecutor.TraceableTask<>(request, null)),
+            new Tracer.NoopTracer()
         ).resultingState;
 
         assertFalse(result != clusterService.state());
 
-        ClusterState result2 = mappingService.putMappingExecutor.execute(result, Collections.singletonList(request)).resultingState;
+        ClusterState result2 = mappingService.putMappingExecutor.execute(
+            result,
+            Collections.singletonList(new ClusterStateTaskExecutor.TraceableTask<>(request, null)),
+            new Tracer.NoopTracer()
+        ).resultingState;
 
         assertSame(result, result2);
     }
@@ -87,7 +97,11 @@ public class MetadataMappingServiceTests extends ESSingleNodeTestCase {
         );
         request.indices(new Index[] { indexService.index() });
         final ClusterStateTaskExecutor.ClusterTasksResult<PutMappingClusterStateUpdateRequest> result = mappingService.putMappingExecutor
-            .execute(clusterService.state(), Collections.singletonList(request));
+            .execute(
+                clusterService.state(),
+                Collections.singletonList(new ClusterStateTaskExecutor.TraceableTask<>(request, null)),
+                new Tracer.NoopTracer()
+            );
         assertThat(result.executionResults.size(), equalTo(1));
         assertTrue(result.executionResults.values().iterator().next().isSuccess());
         assertThat(result.resultingState.metadata().index("test").getMappingVersion(), equalTo(1 + previousVersion));
@@ -101,7 +115,11 @@ public class MetadataMappingServiceTests extends ESSingleNodeTestCase {
         final PutMappingClusterStateUpdateRequest request = new PutMappingClusterStateUpdateRequest("{ \"properties\": {}}");
         request.indices(new Index[] { indexService.index() });
         final ClusterStateTaskExecutor.ClusterTasksResult<PutMappingClusterStateUpdateRequest> result = mappingService.putMappingExecutor
-            .execute(clusterService.state(), Collections.singletonList(request));
+            .execute(
+                clusterService.state(),
+                Collections.singletonList(new ClusterStateTaskExecutor.TraceableTask<>(request, null)),
+                new Tracer.NoopTracer()
+            );
         assertThat(result.executionResults.size(), equalTo(1));
         assertTrue(result.executionResults.values().iterator().next().isSuccess());
         assertThat(result.resultingState.metadata().index("test").getMappingVersion(), equalTo(previousVersion));

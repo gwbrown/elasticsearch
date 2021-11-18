@@ -32,6 +32,7 @@ import org.elasticsearch.core.Tuple;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.monitor.NodeHealthService;
 import org.elasticsearch.monitor.StatusInfo;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.threadpool.ThreadPool.Names;
 import org.elasticsearch.transport.ConnectTransportException;
@@ -105,8 +106,11 @@ public class JoinHelper {
             private final long term = currentTermSupplier.getAsLong();
 
             @Override
-            public ClusterTasksResult<JoinTaskExecutor.Task> execute(ClusterState currentState, List<JoinTaskExecutor.Task> joiningTasks)
-                throws Exception {
+            public ClusterTasksResult<JoinTaskExecutor.Task> execute(
+                ClusterState currentState,
+                List<TraceableTask<JoinTaskExecutor.Task>> joiningTasks,
+                Tracer tracer
+            ) throws Exception {
                 // The current state that MasterService uses might have been updated by a (different) master in a higher term already
                 // Stop processing the current cluster state update, as there's no point in continuing to compute it as
                 // it will later be rejected by Coordinator.publish(...) anyhow
@@ -115,19 +119,21 @@ public class JoinHelper {
                     throw new NotMasterException(
                         "Higher term encountered (current: " + currentState.term() + " > used: " + term + "), there is a newer master"
                     );
-                } else if (currentState.nodes().getMasterNodeId() == null && joiningTasks.stream().anyMatch(Task::isBecomeMasterTask)) {
-                    assert currentState.term() < term : "there should be at most one become master task per election (= by term)";
-                    final CoordinationMetadata coordinationMetadata = CoordinationMetadata.builder(currentState.coordinationMetadata())
-                        .term(term)
-                        .build();
-                    final Metadata metadata = Metadata.builder(currentState.metadata()).coordinationMetadata(coordinationMetadata).build();
-                    currentState = ClusterState.builder(currentState).metadata(metadata).build();
-                } else if (currentState.nodes().isLocalNodeElectedMaster()) {
-                    assert currentState.term() == term : "term should be stable for the same master";
-                }
-                return super.execute(currentState, joiningTasks);
+                } else if (currentState.nodes().getMasterNodeId() == null
+                    && joiningTasks.stream().map(TraceableTask::task).anyMatch(Task::isBecomeMasterTask)) {
+                        assert currentState.term() < term : "there should be at most one become master task per election (= by term)";
+                        final CoordinationMetadata coordinationMetadata = CoordinationMetadata.builder(currentState.coordinationMetadata())
+                            .term(term)
+                            .build();
+                        final Metadata metadata = Metadata.builder(currentState.metadata())
+                            .coordinationMetadata(coordinationMetadata)
+                            .build();
+                        currentState = ClusterState.builder(currentState).metadata(metadata).build();
+                    } else if (currentState.nodes().isLocalNodeElectedMaster()) {
+                        assert currentState.term() == term : "term should be stable for the same master";
+                    }
+                return super.execute(currentState, joiningTasks, tracer);
             }
-
         };
 
         transportService.registerRequestHandler(

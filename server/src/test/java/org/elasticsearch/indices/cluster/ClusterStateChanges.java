@@ -85,6 +85,7 @@ import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.indices.ShardLimitValidator;
 import org.elasticsearch.indices.TestIndexNameExpressionResolver;
 import org.elasticsearch.snapshots.EmptySnapshotsInfoService;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.test.gateway.TestGatewayAllocator;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.Transport;
@@ -427,7 +428,11 @@ public class ClusterStateChanges {
 
     private <T> ClusterState runTasks(ClusterStateTaskExecutor<T> executor, ClusterState clusterState, List<T> entries) {
         try {
-            ClusterTasksResult<T> result = executor.execute(clusterState, entries);
+            ClusterTasksResult<T> result = executor.execute(
+                clusterState,
+                entries.stream().map(entry -> new ClusterStateTaskExecutor.TraceableTask<>(entry, null)).collect(Collectors.toList()),
+                new Tracer.NoopTracer()
+            );
             for (ClusterStateTaskExecutor.TaskResult taskResult : result.executionResults.values()) {
                 if (taskResult.isSuccess() == false) {
                     throw taskResult.getFailure();

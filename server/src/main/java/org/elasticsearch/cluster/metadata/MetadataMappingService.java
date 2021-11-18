@@ -32,6 +32,7 @@ import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.index.mapper.MapperService.MergeReason;
 import org.elasticsearch.index.mapper.Mapping;
 import org.elasticsearch.indices.IndicesService;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,26 +61,33 @@ public class MetadataMappingService {
         @Override
         public ClusterTasksResult<PutMappingClusterStateUpdateRequest> execute(
             ClusterState currentState,
-            List<PutMappingClusterStateUpdateRequest> tasks
+            List<TraceableTask<PutMappingClusterStateUpdateRequest>> tasks,
+            Tracer tracer
         ) throws Exception {
             Map<Index, MapperService> indexMapperServices = new HashMap<>();
             ClusterTasksResult.Builder<PutMappingClusterStateUpdateRequest> builder = ClusterTasksResult.builder();
             try {
-                for (PutMappingClusterStateUpdateRequest request : tasks) {
+                for (TraceableTask<PutMappingClusterStateUpdateRequest> traceableRequest : tasks) {
                     try {
-                        for (Index index : request.indices()) {
-                            final IndexMetadata indexMetadata = currentState.metadata().getIndexSafe(index);
-                            if (indexMapperServices.containsKey(indexMetadata.getIndex()) == false) {
-                                MapperService mapperService = indicesService.createIndexMapperService(indexMetadata);
-                                indexMapperServices.put(index, mapperService);
-                                // add mappings for all types, we need them for cross-type validation
-                                mapperService.merge(indexMetadata, MergeReason.MAPPING_RECOVERY);
+                        PutMappingClusterStateUpdateRequest request = traceableRequest.task();
+                        tracer.onTraceStarted(traceableRequest);
+                        try {
+                            for (Index index : request.indices()) {
+                                final IndexMetadata indexMetadata = currentState.metadata().getIndexSafe(index);
+                                if (indexMapperServices.containsKey(indexMetadata.getIndex()) == false) {
+                                    MapperService mapperService = indicesService.createIndexMapperService(indexMetadata);
+                                    indexMapperServices.put(index, mapperService);
+                                    // add mappings for all types, we need them for cross-type validation
+                                    mapperService.merge(indexMetadata, MergeReason.MAPPING_RECOVERY);
+                                }
                             }
+                            currentState = applyRequest(currentState, request, indexMapperServices);
+                            builder.success(request);
+                        } catch (Exception e) {
+                            builder.failure(request, e);
                         }
-                        currentState = applyRequest(currentState, request, indexMapperServices);
-                        builder.success(request);
-                    } catch (Exception e) {
-                        builder.failure(request, e);
+                    } finally {
+                        tracer.onTraceStopped(traceableRequest);
                     }
                 }
                 return builder.build(currentState);

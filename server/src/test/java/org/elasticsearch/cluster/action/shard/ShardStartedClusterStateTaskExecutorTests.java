@@ -24,6 +24,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.shard.IndexLongFieldRange;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardLongFieldRange;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -339,7 +340,11 @@ public class ShardStartedClusterStateTaskExecutorTests extends ESAllocationTestC
 
     private ClusterStateTaskExecutor.ClusterTasksResult<?> executeTasks(final ClusterState state, final List<StartedShardEntry> tasks)
         throws Exception {
-        final ClusterStateTaskExecutor.ClusterTasksResult<StartedShardEntry> result = executor.execute(state, tasks);
+        final ClusterStateTaskExecutor.ClusterTasksResult<StartedShardEntry> result = executor.execute(
+            state,
+            tasks.stream().map(entry -> new ClusterStateTaskExecutor.TraceableTask<>(entry, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
+        );
         assertThat(result, notNullValue());
         return result;
     }

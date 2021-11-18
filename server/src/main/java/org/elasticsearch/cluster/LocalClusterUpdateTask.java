@@ -10,8 +10,10 @@ package org.elasticsearch.cluster;
 import org.elasticsearch.common.Priority;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.tasks.Tracer;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Used to apply state updates on nodes that are not necessarily master
@@ -35,11 +37,22 @@ public abstract class LocalClusterUpdateTask
     public abstract ClusterTasksResult<LocalClusterUpdateTask> execute(ClusterState currentState) throws Exception;
 
     @Override
-    public final ClusterTasksResult<LocalClusterUpdateTask> execute(ClusterState currentState, List<LocalClusterUpdateTask> tasks)
-        throws Exception {
-        assert tasks.size() == 1 && tasks.get(0) == this : "expected one-element task list containing current object but was " + tasks;
-        ClusterTasksResult<LocalClusterUpdateTask> result = execute(currentState);
-        return ClusterTasksResult.<LocalClusterUpdateTask>builder().successes(tasks).build(result, currentState);
+    public final ClusterTasksResult<LocalClusterUpdateTask> execute(
+        ClusterState currentState,
+        List<TraceableTask<LocalClusterUpdateTask>> tasks,
+        Tracer tracer
+    ) throws Exception {
+        assert tasks.size() == 1 && tasks.get(0).task() == this
+            : "expected one-element task list containing current object but was " + tasks;
+        try {
+            tracer.onTraceStarted(tasks.get(0));
+            ClusterTasksResult<LocalClusterUpdateTask> result = execute(currentState);
+            return ClusterTasksResult.<LocalClusterUpdateTask>builder()
+                .successes(tasks.stream().map(TraceableTask::task).collect(Collectors.toList()))
+                .build(result, currentState);
+        } finally {
+            tracer.onTraceStopped(tasks.get(0));
+        }
     }
 
     /**

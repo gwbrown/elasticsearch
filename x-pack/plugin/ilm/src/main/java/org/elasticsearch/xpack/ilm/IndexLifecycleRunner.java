@@ -55,17 +55,27 @@ class IndexLifecycleRunner {
     private final ILMHistoryStore ilmHistoryStore;
     private final LongSupplier nowSupplier;
 
-    private static final ClusterStateTaskExecutor<IndexLifecycleClusterStateUpdateTask> ILM_TASK_EXECUTOR = (currentState, tasks) -> {
+    private static final ClusterStateTaskExecutor<IndexLifecycleClusterStateUpdateTask> ILM_TASK_EXECUTOR = (
+        currentState,
+        tasks,
+        tracer) -> {
         ClusterStateTaskExecutor.ClusterTasksResult.Builder<IndexLifecycleClusterStateUpdateTask> builder =
             ClusterStateTaskExecutor.ClusterTasksResult.builder();
         ClusterState state = currentState;
-        for (IndexLifecycleClusterStateUpdateTask task : tasks) {
+        for (ClusterStateTaskExecutor.TraceableTask<IndexLifecycleClusterStateUpdateTask> traceableTask : tasks) {
             try {
-                state = task.execute(state);
-                builder.success(task);
-            } catch (Exception e) {
-                builder.failure(task, e);
+                IndexLifecycleClusterStateUpdateTask task = traceableTask.task();
+                tracer.onTraceStarted(traceableTask);
+                try {
+                    state = task.execute(state);
+                    builder.success(task);
+                } catch (Exception e) {
+                    builder.failure(task, e);
+                }
+            } finally {
+                tracer.onTraceStopped(traceableTask);
             }
+
         }
         // Trigger indices lookup creation and related validation
         state.metadata().getIndicesLookup();

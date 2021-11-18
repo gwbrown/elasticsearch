@@ -15,6 +15,7 @@ import org.elasticsearch.cluster.ClusterStateTaskExecutor;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.allocation.AllocationService;
+import org.elasticsearch.tasks.Tracer;
 import org.elasticsearch.test.ESTestCase;
 
 import java.util.ArrayList;
@@ -51,7 +52,8 @@ public class NodeRemovalClusterStateTaskExecutorTests extends ESTestCase {
 
         final ClusterStateTaskExecutor.ClusterTasksResult<NodeRemovalClusterStateTaskExecutor.Task> result = executor.execute(
             clusterState,
-            tasks
+            tasks.stream().map(entry -> new ClusterStateTaskExecutor.TraceableTask<>(entry, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
         );
         assertThat(result.resultingState, equalTo(clusterState));
     }
@@ -88,7 +90,8 @@ public class NodeRemovalClusterStateTaskExecutorTests extends ESTestCase {
 
         final ClusterStateTaskExecutor.ClusterTasksResult<NodeRemovalClusterStateTaskExecutor.Task> result = executor.execute(
             clusterState,
-            tasks
+            tasks.stream().map(entry -> new ClusterStateTaskExecutor.TraceableTask<>(entry, null)).collect(Collectors.toList()),
+            new Tracer.NoopTracer()
         );
 
         verify(allocationService).disassociateDeadNodes(eq(remainingNodesClusterState.get()), eq(true), any(String.class));

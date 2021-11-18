@@ -10,6 +10,7 @@ package org.elasticsearch.xpack.apm;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.data.SpanData;
 
+import org.elasticsearch.action.admin.cluster.settings.ClusterUpdateSettingsResponse;
 import org.elasticsearch.common.settings.MockSecureSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.CollectionUtils;
@@ -27,7 +28,9 @@ import java.util.Collections;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -93,5 +96,29 @@ public class ApmIT extends ESIntegTestCase {
             assertThat(childrenTask.getParentSpanId(), equalTo(parentTask.getSpanId()));
             assertThat(childrenTask.getTraceId(), equalTo(parentTask.getTraceId()));
         }
+    }
+
+    public void testRecordsClusterStateUpdates() {
+        APMTracer.CAPTURING_SPAN_EXPORTER.clear();
+
+        ClusterUpdateSettingsResponse response = client().admin()
+            .cluster()
+            .prepareUpdateSettings()
+            .setTransientSettings(Settings.builder().put("action.auto_create_index", false))
+            .get();
+        assertTrue(response.isAcknowledged());
+
+        List<SpanData> spans = APMTracer.CAPTURING_SPAN_EXPORTER.findSpanByName("cluster_update_settings").collect(toList());
+        assertThat(spans, hasSize(1));
+        List<SpanData> parentSpans = APMTracer.CAPTURING_SPAN_EXPORTER.findSpanBySpanId(spans.get(0).getParentSpanId()).collect(toList());
+        assertThat(parentSpans, hasSize(1));
+        assertThat(parentSpans.get(0).getName(), equalTo("cluster:admin/settings/update"));
+
+        response = client().admin()
+            .cluster()
+            .prepareUpdateSettings()
+            .setTransientSettings(Settings.builder().put("action.auto_create_index", (String) null))
+            .get();
+        assertTrue(response.isAcknowledged());
     }
 }
