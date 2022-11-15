@@ -14,7 +14,6 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.ByteSizeValue;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -128,111 +127,16 @@ public class RemoteClusterSettings {
     );
 
     static void validateRemoteAccessSettings(Settings settings) {
-        if (settings.getGroups("transport.profiles.", true).keySet().contains(REMOTE_ACCESS_PROFILE)) {
-            final List<String> conflicts = new ArrayList<>();
-            if (settings.get(TCP_KEEP_ALIVE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_KEEP_ALIVE.getKey()) != null) {
-                conflicts.add(
-                    TCP_KEEP_ALIVE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()
-                        + " and "
-                        + TCP_KEEP_ALIVE.getKey()
-                );
-            }
-            if (settings.get(TCP_KEEP_IDLE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_KEEP_IDLE.getKey()) != null) {
-                conflicts.add(
-                    TCP_KEEP_IDLE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey() + " and " + TCP_KEEP_IDLE.getKey()
-                );
-
-            }
-            if (settings.get(TCP_KEEP_INTERVAL_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_KEEP_INTERVAL.getKey()) != null) {
-                conflicts.add(
-                    TCP_KEEP_INTERVAL_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()
-                        + " and "
-                        + TCP_KEEP_INTERVAL.getKey()
-                );
-
-            }
-            if (settings.get(TCP_KEEP_COUNT_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_KEEP_COUNT.getKey()) != null) {
-                conflicts.add(
-                    TCP_KEEP_COUNT_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()
-                        + " and "
-                        + TCP_KEEP_COUNT.getKey()
-                );
-
-            }
-            if (settings.get(TCP_NO_DELAY_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_NO_DELAY.getKey()) != null) {
-                conflicts.add(
-                    TCP_NO_DELAY_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey() + " and " + TCP_NO_DELAY.getKey()
-                );
-
-            }
-            if (settings.get(TCP_REUSE_ADDRESS_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_REUSE_ADDRESS.getKey()) != null) {
-                conflicts.add(
-                    TCP_REUSE_ADDRESS_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()
-                        + " and "
-                        + TCP_NO_DELAY.getKey()
-                );
-
-            }
-            if (settings.get(TCP_SEND_BUFFER_SIZE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_SEND_BUFFER_SIZE.getKey()) != null) {
-                conflicts.add(
-                    TCP_SEND_BUFFER_SIZE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()
-                        + " and "
-                        + TCP_SEND_BUFFER_SIZE.getKey()
-                );
-
-            }
-            if (settings.get(TCP_RECEIVE_BUFFER_SIZE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(TCP_RECEIVE_BUFFER_SIZE.getKey()) != null) {
-                conflicts.add(
-                    TCP_RECEIVE_BUFFER_SIZE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()
-                        + " and "
-                        + TCP_RECEIVE_BUFFER_SIZE.getKey()
-                );
-
-            }
-            if (settings.get(BIND_HOST_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(BIND_HOST.getKey()) != null) {
-                conflicts.add(
-                    BIND_HOST_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey() + " and " + BIND_HOST.getKey()
-                );
-
-            }
-            if (settings.get(PUBLISH_HOST_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(PUBLISH_HOST.getKey()) != null) {
-                conflicts.add(
-                    PUBLISH_HOST_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey() + " and " + PUBLISH_HOST.getKey()
-                );
-
-            }
-            if (settings.get(PORT_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(PORT.getKey()) != null) {
-                conflicts.add(PORT_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey() + " and " + PORT.getKey());
-            }
-            if (settings.get(PUBLISH_PORT_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey()) != null
-                && settings.get(PUBLISH_PORT.getKey()) != null) {
-                conflicts.add(
-                    PUBLISH_PORT_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey() + " and " + PUBLISH_PORT.getKey()
-                );
-            }
-
-            if (conflicts.isEmpty() == false) {
-                final String message = "There are conflicts between remote access settings and transport profile "
-                    + "[_remote_access]. These pairs of settings conflict, remove one of each pair: "
-                    + conflicts;
-                if (REMOTE_ACCESS_ENABLED.get(settings)) {
-                    throw new IllegalStateException(message);
-                } else {
-                    logger.warn("{} or Elasticsearch will fail to start once [{}] is set to true", message, REMOTE_ACCESS_ENABLED.getKey());
-                }
-
-            }
+        if (REMOTE_ACCESS_ENABLED.get(settings)
+            && settings.getGroups("transport.profiles.", true).keySet().contains(REMOTE_ACCESS_PROFILE)) {
+            throw new IllegalArgumentException(
+                "Remote Access settings should not be configured using the ["
+                    + REMOTE_ACCESS_PROFILE
+                    + "] profile. "
+                    + "Use the ["
+                    + REMOTE_ACCESS_PREFIX
+                    + "] settings instead."
+            );
         }
     }
 

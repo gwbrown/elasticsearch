@@ -9,7 +9,6 @@ package org.elasticsearch.xpack.core.security.transport;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.ssl.SslConfiguration;
 import org.elasticsearch.common.util.Maps;
-import org.elasticsearch.transport.RemoteClusterSettings;
 import org.elasticsearch.transport.TransportSettings;
 import org.elasticsearch.xpack.core.ssl.SSLService;
 
@@ -33,6 +32,8 @@ public final class ProfileConfigurations {
             if (profileName.equals(TransportSettings.DEFAULT_PROFILE)) {
                 // don't attempt to parse ssl settings from the profile;
                 // profiles need to be killed with fire
+                // We don't need to check the Remote Access profile here; when remote access settings are validated, we check that there are
+                // no direct usages of the profile
                 if (settings.getByPrefix("transport.profiles.default.xpack.security.ssl.").isEmpty()) {
                     continue;
                 } else {
@@ -42,18 +43,7 @@ public final class ProfileConfigurations {
                     );
                 }
             }
-            if (isUntrustedRemoteClusterEnabled() && REMOTE_ACCESS_ENABLED.get(settings) && profileName.equals(REMOTE_ACCESS_PROFILE)) {
-                if (settings.getByPrefix("transport.profiles." + REMOTE_ACCESS_PROFILE + ".xpack.security.ssl.").isEmpty()) {
-                    continue;
-                } else {
-                    throw new IllegalArgumentException(
-                        "SSL settings should not be configured for the remote access profile. "
-                            + "Use the ["
-                            + RemoteClusterSettings.REMOTE_ACCESS_PREFIX
-                            + "ssl] settings instead."
-                    );
-                }
-            }
+
             SslConfiguration configuration = sslService.getSSLConfiguration("transport.profiles." + profileName + "." + setting("ssl"));
             profileConfiguration.put(profileName, configuration);
         }
