@@ -9,12 +9,17 @@ package org.elasticsearch.xpack.core.security.transport;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.ssl.SslConfiguration;
 import org.elasticsearch.common.util.Maps;
+import org.elasticsearch.transport.RemoteClusterSettings;
 import org.elasticsearch.transport.TransportSettings;
 import org.elasticsearch.xpack.core.ssl.SSLService;
 
 import java.util.Map;
 import java.util.Set;
 
+import static org.elasticsearch.transport.RemoteClusterSettings.REMOTE_ACCESS_ENABLED;
+import static org.elasticsearch.transport.RemoteClusterSettings.REMOTE_ACCESS_PREFIX;
+import static org.elasticsearch.transport.RemoteClusterSettings.REMOTE_ACCESS_PROFILE;
+import static org.elasticsearch.transport.TcpTransport.isUntrustedRemoteClusterEnabled;
 import static org.elasticsearch.xpack.core.security.SecurityField.setting;
 
 public final class ProfileConfigurations {
@@ -37,12 +42,28 @@ public final class ProfileConfigurations {
                     );
                 }
             }
+            if (isUntrustedRemoteClusterEnabled() && REMOTE_ACCESS_ENABLED.get(settings) && profileName.equals(REMOTE_ACCESS_PROFILE)) {
+                if (settings.getByPrefix("transport.profiles." + REMOTE_ACCESS_PROFILE + ".xpack.security.ssl.").isEmpty()) {
+                    continue;
+                } else {
+                    throw new IllegalArgumentException(
+                        "SSL settings should not be configured for the remote access profile. "
+                            + "Use the ["
+                            + RemoteClusterSettings.REMOTE_ACCESS_PREFIX
+                            + "ssl] settings instead."
+                    );
+                }
+            }
             SslConfiguration configuration = sslService.getSSLConfiguration("transport.profiles." + profileName + "." + setting("ssl"));
             profileConfiguration.put(profileName, configuration);
         }
 
         assert profileConfiguration.containsKey(TransportSettings.DEFAULT_PROFILE) == false;
         profileConfiguration.put(TransportSettings.DEFAULT_PROFILE, defaultConfiguration);
+        if (isUntrustedRemoteClusterEnabled() && REMOTE_ACCESS_ENABLED.get(settings)) {
+            assert profileConfiguration.containsKey(REMOTE_ACCESS_PROFILE) == false;
+            profileConfiguration.put(REMOTE_ACCESS_PROFILE, sslService.getSSLConfiguration(REMOTE_ACCESS_PREFIX + "ssl"));
+        }
         return profileConfiguration;
     }
 }
