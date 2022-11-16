@@ -234,7 +234,7 @@ public class IPFilter {
             Setting<List<String>> denySetting = PROFILE_FILTER_DENY_SETTING.getConcreteSettingForNamespace(profile);
             profileDenyRules.put(profile, denySetting.get(settings));
         }
-        if (TcpTransport.isUntrustedRemoteClusterEnabled() && REMOTE_ACCESS_ENABLED.get(settings)) {
+        if (REMOTE_ACCESS_ENABLED.get(settings)) {
             logger.debug(
                 "Remote access is enabled, populating filters for profile [{}] with contents of [{}] and [{}]",
                 REMOTE_ACCESS_PROFILE,

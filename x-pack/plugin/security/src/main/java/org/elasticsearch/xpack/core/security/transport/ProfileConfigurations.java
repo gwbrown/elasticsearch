@@ -18,7 +18,6 @@ import java.util.Set;
 import static org.elasticsearch.transport.RemoteClusterSettings.REMOTE_ACCESS_ENABLED;
 import static org.elasticsearch.transport.RemoteClusterSettings.REMOTE_ACCESS_PREFIX;
 import static org.elasticsearch.transport.RemoteClusterSettings.REMOTE_ACCESS_PROFILE;
-import static org.elasticsearch.transport.TcpTransport.isUntrustedRemoteClusterEnabled;
 import static org.elasticsearch.xpack.core.security.SecurityField.setting;
 
 public final class ProfileConfigurations {
@@ -50,7 +49,7 @@ public final class ProfileConfigurations {
 
         assert profileConfiguration.containsKey(TransportSettings.DEFAULT_PROFILE) == false;
         profileConfiguration.put(TransportSettings.DEFAULT_PROFILE, defaultConfiguration);
-        if (isUntrustedRemoteClusterEnabled() && REMOTE_ACCESS_ENABLED.get(settings)) {
+        if (REMOTE_ACCESS_ENABLED.get(settings)) {
             assert profileConfiguration.containsKey(REMOTE_ACCESS_PROFILE) == false;
             profileConfiguration.put(REMOTE_ACCESS_PROFILE, sslService.getSSLConfiguration(REMOTE_ACCESS_PREFIX + "ssl"));
         }

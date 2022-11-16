@@ -1004,7 +1004,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         if (isDefaultSet == false) {
             profiles.add(new ProfileSettings(settings, TransportSettings.DEFAULT_PROFILE));
         }
-        if (isUntrustedRemoteClusterEnabled() && REMOTE_ACCESS_ENABLED.get(settings)) {
+        if (REMOTE_ACCESS_ENABLED.get(settings)) {
             profiles.add(RemoteClusterSettings.buildRemoteAccessProfileSettings(settings));
         }
         // Add the remote access profile
