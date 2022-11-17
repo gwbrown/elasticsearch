@@ -99,7 +99,7 @@ public class RemoteClusterPortSettings {
     );
 
     public static final Setting<Integer> TCP_KEEP_COUNT = intSetting(
-        REMOTE_ACCESS_PREFIX + "tcp.keep_interval",
+        REMOTE_ACCESS_PREFIX + "tcp.keep_count",
         TransportSettings.TCP_KEEP_COUNT,
         -1,
         Setting.Property.NodeScope
