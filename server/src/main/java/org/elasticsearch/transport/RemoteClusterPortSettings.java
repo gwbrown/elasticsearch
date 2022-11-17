@@ -150,10 +150,7 @@ public class RemoteClusterPortSettings {
         // but inherit any `_remote_access` profile settings that don't conflict.
         Settings syntheticRemoteAccessProfile = Settings.builder()
             .put(settings)
-            .put(
-                TCP_KEEP_ALIVE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey(),
-                TCP_KEEP_ALIVE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).get(settings)
-            )
+            .put(TCP_KEEP_ALIVE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey(), TCP_KEEP_ALIVE.get(settings))
             .put(TCP_KEEP_IDLE_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey(), TCP_KEEP_IDLE.get(settings))
             .put(TCP_KEEP_INTERVAL_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey(), TCP_KEEP_INTERVAL.get(settings))
             .put(TCP_KEEP_COUNT_PROFILE.getConcreteSettingForNamespace(REMOTE_ACCESS_PROFILE).getKey(), TCP_KEEP_COUNT.get(settings))
