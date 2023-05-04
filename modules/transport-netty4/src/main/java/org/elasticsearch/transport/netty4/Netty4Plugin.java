@@ -134,7 +134,7 @@ public class Netty4Plugin extends Plugin implements NetworkPlugin {
         );
     }
 
-    List<TerminationHandler> getTerminationHandlers() {
+    public List<TerminationHandler> getTerminationHandlers() {
         return Collections.singletonList(new TerminationHandler() {
             @Override
             public String name() {

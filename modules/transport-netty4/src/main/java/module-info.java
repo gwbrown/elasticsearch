@@ -6,6 +6,8 @@
  * Side Public License, v 1.
  */
 
+import org.elasticsearch.transport.netty4.internal.NettyTerminationHandlerProvider;
+
 module org.elasticsearch.transport.netty4 {
     requires jdk.net;
     requires org.elasticsearch.base;
@@ -23,8 +25,9 @@ module org.elasticsearch.transport.netty4 {
 
     exports org.elasticsearch.http.netty4;
     exports org.elasticsearch.transport.netty4;
+    exports org.elasticsearch.transport.netty4.internal to org.elasticsearch.server;
 
     provides org.elasticsearch.node.internal.TerminationHandlerProvider
         with
-            org.elasticsearch.transport.netty4.NettyTerminationHandlerProvider;
+            NettyTerminationHandlerProvider;
 }

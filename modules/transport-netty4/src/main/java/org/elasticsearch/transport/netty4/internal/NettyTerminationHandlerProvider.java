@@ -6,18 +6,20 @@
  * Side Public License, v 1.
  */
 
-package org.elasticsearch.transport.netty4;
+package org.elasticsearch.transport.netty4.internal;
 
 import org.elasticsearch.node.internal.TerminationHandler;
 import org.elasticsearch.node.internal.TerminationHandlerProvider;
+import org.elasticsearch.transport.netty4.Netty4Plugin;
 
 import java.util.Collection;
+import java.util.Collections;
 
 public class NettyTerminationHandlerProvider implements TerminationHandlerProvider {
     private final Netty4Plugin plugin;
 
     public NettyTerminationHandlerProvider() {
-        throw new IllegalStateException("Provider must be constructed using PluginsService");
+        plugin = null;
     }
 
     public NettyTerminationHandlerProvider(Netty4Plugin plugin) {
@@ -26,6 +28,6 @@ public class NettyTerminationHandlerProvider implements TerminationHandlerProvid
 
     @Override
     public Collection<TerminationHandler> handlers() {
-        return plugin.getTerminationHandlers();
+        return plugin != null ? plugin.getTerminationHandlers() : Collections.emptyList();
     }
 }

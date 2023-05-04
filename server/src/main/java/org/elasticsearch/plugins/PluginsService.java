@@ -372,12 +372,17 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         }
 
         Constructor<T> constructor = constructors[0];
+
         // Using modules and SPI requires that we declare the default no-arg constructor apart from our custom
         // one arg constructor with a plugin.
         if (constructors.length == 2) {
-            // we prefer the one arg constructor in this case
-            if (constructors[1].getParameterCount() > 0) {
-                constructor = constructors[1];
+            Constructor<T> noArgsConstructor = constructors[0].getParameterCount() == 0 ? constructors[0] : constructors[1];
+            Constructor<T> otherConstructor =  constructors[0].getParameterCount() == 0 ? constructors[1] : constructors[0];
+            // If the argument doesn't match what we expect, use the no-args constructor. This can happen with legit plugins
+            if (otherConstructor.getParameterCount() == 1 && otherConstructor.getParameterTypes()[0] != plugin.getClass()) {
+                constructor = noArgsConstructor;
+            } else {
+                constructor = otherConstructor;
             }
         } else if (constructors.length > 1) {
             throw new IllegalStateException("no unique public " + extensionConstructorMessage(extensionClass, extensionPointType));
