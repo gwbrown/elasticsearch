@@ -23,4 +23,8 @@ module org.elasticsearch.transport.netty4 {
 
     exports org.elasticsearch.http.netty4;
     exports org.elasticsearch.transport.netty4;
+
+    provides org.elasticsearch.node.internal.TerminationHandlerProvider
+        with
+            org.elasticsearch.transport.netty4.NettyTerminationHandlerProvider;
 }

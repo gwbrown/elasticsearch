@@ -71,6 +71,7 @@ import org.elasticsearch.xcontent.NamedXContentRegistry;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiPredicate;
 
 import static org.elasticsearch.http.HttpTransportSettings.SETTING_HTTP_MAX_CHUNK_SIZE;
@@ -166,7 +167,8 @@ public class Netty4HttpServerTransport extends AbstractHttpServerTransport {
         Tracer tracer,
         TLSConfig tlsConfig,
         @Nullable AcceptChannelHandler.AcceptPredicate acceptChannelPredicate,
-        @Nullable TriConsumer<HttpRequest, Channel, ActionListener<Void>> headerValidator
+        @Nullable TriConsumer<HttpRequest, Channel, ActionListener<Void>> headerValidator,
+        AtomicBoolean shuttingDown
     ) {
         super(
             settings,

@@ -41,6 +41,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.hamcrest.Matchers.contains;
 
@@ -108,7 +109,8 @@ public class Netty4HttpServerPipeliningTests extends ESTestCase {
                 Tracer.NOOP,
                 TLSConfig.noTLS(),
                 null,
-                randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+                randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+                new AtomicBoolean(false)
             );
         }
 

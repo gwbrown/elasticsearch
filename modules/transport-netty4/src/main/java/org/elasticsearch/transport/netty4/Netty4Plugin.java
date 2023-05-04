@@ -23,6 +23,7 @@ import org.elasticsearch.http.HttpPreRequest;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
+import org.elasticsearch.node.internal.TerminationHandler;
 import org.elasticsearch.plugins.NetworkPlugin;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestRequest;
@@ -35,6 +36,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -44,6 +46,7 @@ public class Netty4Plugin extends Plugin implements NetworkPlugin {
     public static final String NETTY_HTTP_TRANSPORT_NAME = "netty4";
 
     private final SetOnce<SharedGroupFactory> groupFactory = new SetOnce<>();
+    private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
 
     @Override
     public List<Setting<?>> getSettings() {
@@ -120,7 +123,8 @@ public class Netty4Plugin extends Plugin implements NetworkPlugin {
                 tracer,
                 TLSConfig.noTLS(),
                 null,
-                null
+                null,
+                shuttingDown
             ) {
                 @Override
                 protected void populatePerRequestThreadContext(RestRequest restRequest, ThreadContext threadContext) {
@@ -128,6 +132,21 @@ public class Netty4Plugin extends Plugin implements NetworkPlugin {
                 }
             }
         );
+    }
+
+    List<TerminationHandler> getTerminationHandlers() {
+        return Collections.singletonList(new TerminationHandler() {
+            @Override
+            public String name() {
+                return "netty";
+            }
+
+            @Override
+            public void handleTermination(Runnable done) {
+                shuttingDown.set(true);
+                done.run();
+            };
+        });
     }
 
     private SharedGroupFactory getSharedGroupFactory(Settings settings) {

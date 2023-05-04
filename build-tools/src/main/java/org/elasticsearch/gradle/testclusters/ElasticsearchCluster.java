@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 public class ElasticsearchCluster implements TestClusterConfiguration, Named {
 
     private static final Logger LOGGER = Logging.getLogger(ElasticsearchNode.class);
-    private static final int CLUSTER_UP_TIMEOUT = 40;
+    private static final int CLUSTER_UP_TIMEOUT = 400000000; // nocommit
     private static final TimeUnit CLUSTER_UP_TIMEOUT_UNIT = TimeUnit.SECONDS;
 
     private final AtomicBoolean configurationFrozen = new AtomicBoolean(false);

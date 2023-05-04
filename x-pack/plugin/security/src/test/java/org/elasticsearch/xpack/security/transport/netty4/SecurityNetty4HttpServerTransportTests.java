@@ -30,6 +30,7 @@ import org.junit.Before;
 
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.SSLEngine;
 
@@ -79,7 +80,8 @@ public class SecurityNetty4HttpServerTransportTests extends AbstractHttpServerTr
             Tracer.NOOP,
             new TLSConfig(sslService.getHttpTransportSSLConfiguration(), sslService::createSSLEngine),
             null,
-            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+            new AtomicBoolean(false)
         );
         ChannelHandler handler = transport.configureServerChannelHandler();
         final EmbeddedChannel ch = new EmbeddedChannel(handler);
@@ -106,7 +108,8 @@ public class SecurityNetty4HttpServerTransportTests extends AbstractHttpServerTr
             Tracer.NOOP,
             new TLSConfig(sslService.getHttpTransportSSLConfiguration(), sslService::createSSLEngine),
             null,
-            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+            new AtomicBoolean(false)
         );
         ChannelHandler handler = transport.configureServerChannelHandler();
         final EmbeddedChannel ch = new EmbeddedChannel(handler);
@@ -133,7 +136,8 @@ public class SecurityNetty4HttpServerTransportTests extends AbstractHttpServerTr
             Tracer.NOOP,
             new TLSConfig(sslService.getHttpTransportSSLConfiguration(), sslService::createSSLEngine),
             null,
-            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+            new AtomicBoolean(false)
         );
         ChannelHandler handler = transport.configureServerChannelHandler();
         final EmbeddedChannel ch = new EmbeddedChannel(handler);
@@ -160,7 +164,8 @@ public class SecurityNetty4HttpServerTransportTests extends AbstractHttpServerTr
             Tracer.NOOP,
             new TLSConfig(sslService.getHttpTransportSSLConfiguration(), sslService::createSSLEngine),
             null,
-            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+            new AtomicBoolean(false)
         );
         ChannelHandler handler = transport.configureServerChannelHandler();
         final EmbeddedChannel ch = new EmbeddedChannel(handler);
@@ -182,7 +187,8 @@ public class SecurityNetty4HttpServerTransportTests extends AbstractHttpServerTr
             Tracer.NOOP,
             new TLSConfig(sslService.getHttpTransportSSLConfiguration(), sslService::createSSLEngine),
             null,
-            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+            new AtomicBoolean(false)
         );
         ChannelHandler handler = transport.configureServerChannelHandler();
         EmbeddedChannel ch = new EmbeddedChannel(handler);
@@ -205,7 +211,8 @@ public class SecurityNetty4HttpServerTransportTests extends AbstractHttpServerTr
             Tracer.NOOP,
             new TLSConfig(sslService.getHttpTransportSSLConfiguration(), sslService::createSSLEngine),
             null,
-            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+            new AtomicBoolean(false)
         );
         handler = transport.configureServerChannelHandler();
         ch = new EmbeddedChannel(handler);
@@ -237,7 +244,8 @@ public class SecurityNetty4HttpServerTransportTests extends AbstractHttpServerTr
             Tracer.NOOP,
             new TLSConfig(sslService.getHttpTransportSSLConfiguration(), sslService::createSSLEngine),
             null,
-            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null)
+            randomFrom(Netty4HttpHeaderValidator.NOOP_VALIDATOR, null),
+            new AtomicBoolean(false)
         );
         assertNotNull(transport.configureServerChannelHandler());
     }
