@@ -45,6 +45,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static java.util.Collections.unmodifiableMap;
+import static org.elasticsearch.xpack.core.security.authz.privilege.IndexPrivilege.READ_FAILURES;
 
 /**
  * A permission that is based on privileges for index related actions executed
@@ -146,6 +147,10 @@ public final class IndicesPermission {
         final Set<String> grantMappingUpdatesOnRestrictedIndices = new HashSet<>();
         final boolean isMappingUpdateAction = isMappingUpdateAction(action);
         for (final Group group : groups) {
+
+            if (group.privilege().name().contains(READ_FAILURES.name().stream().findFirst().orElse(""))) {
+
+            }
             if (group.actionMatcher.test(action)) {
                 if (group.allowRestrictedIndices) {
                     restrictedIndices.addAll(Arrays.asList(group.indices()));
